@@ -9,8 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/STLLoader.js"></script>
     <style>
         :root {
             --bg-gradient-start: #667eea;
@@ -571,6 +569,15 @@
             <p class="opacity-75 text-sm">Calculateur d'impression 3D - Tous les coûts sont estimatifs</p>
         </div>
     </div>
+
+    <!-- Script d'initialisation du thème (doit se charger AVANT calculator.js) -->
+    <script>
+        // Charger le thème immédiatement pour éviter le flash
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
 
     <script src="js/calculator.js"></script>
 </body>

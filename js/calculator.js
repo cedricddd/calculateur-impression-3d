@@ -727,20 +727,33 @@ function toggleTheme() {
 
 // Charger le thème sauvegardé au démarrage
 function loadSavedTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    
-    const icon = document.getElementById('themeIcon');
-    const text = document.getElementById('themeText');
-    
-    if (savedTheme === 'dark') {
-        icon.className = 'fas fa-sun';
-        text.textContent = 'Mode Clair';
+    try {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        const icon = document.getElementById('themeIcon');
+        const text = document.getElementById('themeText');
+        
+        if (icon && text) {
+            if (savedTheme === 'dark') {
+                icon.className = 'fas fa-sun';
+                text.textContent = 'Mode Clair';
+            } else {
+                icon.className = 'fas fa-moon';
+                text.textContent = 'Mode Sombre';
+            }
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement du thème:', error);
     }
 }
 
-// Charger le thème au démarrage
-document.addEventListener('DOMContentLoaded', loadSavedTheme);
+// Charger le thème au démarrage - appeler dès que le DOM est prêt
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadSavedTheme);
+} else {
+    loadSavedTheme();
+}
 
 // ===========================================
 // IMPORT STL
@@ -779,37 +792,39 @@ async function handleSTLUpload(event) {
 // Fonction pour analyser le fichier STL
 function analyzeSTL(arrayBuffer, fileName) {
     try {
-        // Vérifier si c'est un STL binaire ou ASCII
         const view = new DataView(arrayBuffer);
-        const isBinary = view.byteLength > 84;
-        
         let volume = 0;
+        let triangleCount = 0;
+        
+        // Vérifier si c'est un STL binaire (plus de 84 octets et pas de texte "solid" au début)
+        const header = new Uint8Array(arrayBuffer.slice(0, 80));
+        const headerText = String.fromCharCode.apply(null, header);
+        const isBinary = arrayBuffer.byteLength > 84 && !headerText.toLowerCase().includes('solid');
         
         if (isBinary) {
             // STL binaire
-            // Les 80 premiers octets sont l'en-tête
-            // Les 4 octets suivants donnent le nombre de triangles
-            const triangleCount = view.getUint32(80, true);
+            triangleCount = view.getUint32(80, true);
             
-            // Calculer le volume approximatif
-            let offset = 84;
-            for (let i = 0; i < triangleCount; i++) {
-                // Lire les 3 sommets du triangle (12 floats * 4 bytes = 48 bytes)
-                // Normal (3 floats) + 3 vertices (9 floats) + attribute (2 bytes)
-                offset += 50; // Sauter au prochain triangle
-            }
-            
-            // Estimation du volume (méthode simplifiée)
-            // Volume approximatif basé sur la taille du fichier
-            volume = (arrayBuffer.byteLength / 1000) * 0.5; // Estimation grossière
+            // Estimation du volume basée sur le nombre de triangles
+            // Formule approximative : plus de triangles = plus grand objet
+            volume = Math.pow(triangleCount / 100, 0.8) * 2;
             
         } else {
-            // STL ASCII - estimation basée sur la taille du fichier
-            volume = (arrayBuffer.byteLength / 10000) * 0.5;
+            // STL ASCII
+            const text = new TextDecoder().decode(arrayBuffer);
+            const vertices = text.match(/vertex\s+[\d\.\-e]+\s+[\d\.\-e]+\s+[\d\.\-e]+/gi);
+            
+            if (vertices) {
+                triangleCount = vertices.length / 3;
+                volume = Math.pow(triangleCount / 100, 0.8) * 2;
+            } else {
+                // Estimation basée sur la taille du fichier si parsing échoue
+                volume = (arrayBuffer.byteLength / 10000) * 0.5;
+            }
         }
         
-        // Arrondir le volume
-        volume = Math.max(0.1, volume); // Minimum 0.1 cm³
+        // S'assurer que le volume est dans une plage raisonnable
+        volume = Math.max(0.5, Math.min(volume, 1000));
         
         // Calculer le poids estimé
         const density = parseFloat(document.getElementById('filamentDensity').value) || 1.24;
@@ -819,17 +834,29 @@ function analyzeSTL(arrayBuffer, fileName) {
         stlData = {
             fileName: fileName,
             volume: volume,
-            weight: weight
+            weight: weight,
+            triangles: triangleCount
         };
         
         // Afficher les informations
-        document.getElementById('stlInfo').classList.remove('hidden');
-        document.getElementById('stlFileName').textContent = fileName;
-        document.getElementById('stlVolume').textContent = volume.toFixed(2);
-        document.getElementById('stlWeight').textContent = weight.toFixed(2);
+        const stlInfo = document.getElementById('stlInfo');
+        if (stlInfo) {
+            stlInfo.classList.remove('hidden');
+            
+            const fileNameEl = document.getElementById('stlFileName');
+            const volumeEl = document.getElementById('stlVolume');
+            const weightEl = document.getElementById('stlWeight');
+            
+            if (fileNameEl) fileNameEl.textContent = fileName;
+            if (volumeEl) volumeEl.textContent = volume.toFixed(2);
+            if (weightEl) weightEl.textContent = weight.toFixed(2);
+        }
         
         // Mettre à jour automatiquement le poids dans le formulaire
-        document.getElementById('filamentWeight').value = weight.toFixed(1);
+        const weightInput = document.getElementById('filamentWeight');
+        if (weightInput) {
+            weightInput.value = weight.toFixed(1);
+        }
         
         // Recalculer les coûts
         calculateCost();
@@ -838,7 +865,7 @@ function analyzeSTL(arrayBuffer, fileName) {
         
     } catch (error) {
         console.error('Erreur lors de l\'analyse du STL:', error);
-        showNotification('Erreur lors de l\'analyse du fichier STL', 'error');
+        showNotification('Erreur lors de l\'analyse du fichier STL: ' + error.message, 'error');
     }
 }
 

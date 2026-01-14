@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Diagnostic - Calculateur 3D</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: green; }
+        .error { color: red; }
+        button {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnostic du Calculateur 3D</h1>
+    
+    <div class="test-section">
+        <h2>1. Test LocalStorage</h2>
+        <button onclick="testLocalStorage()">Tester LocalStorage</button>
+        <p id="localStorage-result"></p>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test Mode Sombre</h2>
+        <button onclick="testTheme()">Basculer le thème</button>
+        <p id="theme-result"></p>
+        <p>Thème actuel: <span id="current-theme"></span></p>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test Upload STL</h2>
+        <input type="file" id="testStl" accept=".stl">
+        <button onclick="testSTL()">Tester STL</button>
+        <p id="stl-result"></p>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Test Chargement des Scripts</h2>
+        <button onclick="testScripts()">Vérifier les Scripts</button>
+        <div id="scripts-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Console du Navigateur</h2>
+        <p>Ouvrez la console (F12) pour voir les erreurs JavaScript</p>
+        <button onclick="console.log('Test console - OK')">Test Console</button>
+    </div>
+
+    <script>
+        // Test 1: LocalStorage
+        function testLocalStorage() {
+            const result = document.getElementById('localStorage-result');
+            try {
+                localStorage.setItem('test', 'valeur-test');
+                const value = localStorage.getItem('test');
+                if (value === 'valeur-test') {
+                    result.innerHTML = '<span class="success">✓ LocalStorage fonctionne!</span>';
+                    localStorage.removeItem('test');
+                } else {
+                    result.innerHTML = '<span class="error">✗ LocalStorage ne fonctionne pas correctement</span>';
+                }
+            } catch (e) {
+                result.innerHTML = '<span class="error">✗ Erreur: ' + e.message + '</span>';
+            }
+        }
+
+        // Test 2: Mode Sombre
+        function testTheme() {
+            const result = document.getElementById('theme-result');
+            const currentTheme = document.getElementById('current-theme');
+            
+            try {
+                const html = document.documentElement;
+                const current = html.getAttribute('data-theme') || 'light';
+                const newTheme = current === 'dark' ? 'light' : 'dark';
+                
+                html.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                
+                currentTheme.textContent = newTheme;
+                result.innerHTML = '<span class="success">✓ Thème changé en: ' + newTheme + '</span>';
+                
+                // Changer le fond pour visualiser
+                document.body.style.background = newTheme === 'dark' ? '#1a1a2e' : '#f5f5f5';
+                document.body.style.color = newTheme === 'dark' ? 'white' : 'black';
+                
+            } catch (e) {
+                result.innerHTML = '<span class="error">✗ Erreur: ' + e.message + '</span>';
+            }
+        }
+
+        // Test 3: STL
+        function testSTL() {
+            const result = document.getElementById('stl-result');
+            const fileInput = document.getElementById('testStl');
+            
+            if (!fileInput.files.length) {
+                result.innerHTML = '<span class="error">✗ Sélectionnez un fichier STL d\'abord</span>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            if (!file.name.toLowerCase().endsWith('.stl')) {
+                result.innerHTML = '<span class="error">✗ Le fichier n\'est pas un STL</span>';
+                return;
+            }
+            
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const arrayBuffer = e.target.result;
+                    const size = arrayBuffer.byteLength;
+                    result.innerHTML = '<span class="success">✓ Fichier chargé: ' + file.name + ' (' + (size/1024).toFixed(2) + ' KB)</span>';
+                } catch (err) {
+                    result.innerHTML = '<span class="error">✗ Erreur: ' + err.message + '</span>';
+                }
+            };
+            
+            reader.onerror = function() {
+                result.innerHTML = '<span class="error">✗ Erreur de lecture du fichier</span>';
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Test 4: Scripts
+        function testScripts() {
+            const result = document.getElementById('scripts-result');
+            let html = '<ul>';
+            
+            // Vérifier Chart.js
+            html += '<li>' + (typeof Chart !== 'undefined' ? '<span class="success">✓ Chart.js chargé</span>' : '<span class="error">✗ Chart.js manquant</span>') + '</li>';
+            
+            // Vérifier jsPDF
+            html += '<li>' + (typeof window.jspdf !== 'undefined' ? '<span class="success">✓ jsPDF chargé</span>' : '<span class="error">✗ jsPDF manquant</span>') + '</li>';
+            
+            // Vérifier Font Awesome
+            const hasFA = document.querySelector('link[href*="fontawesome"]') !== null;
+            html += '<li>' + (hasFA ? '<span class="success">✓ Font Awesome chargé</span>' : '<span class="error">✗ Font Awesome manquant</span>') + '</li>';
+            
+            // Vérifier Tailwind
+            const hasTailwind = document.querySelector('script[src*="tailwind"]') !== null;
+            html += '<li>' + (hasTailwind ? '<span class="success">✓ Tailwind chargé</span>' : '<span class="error">✗ Tailwind manquant</span>') + '</li>';
+            
+            html += '</ul>';
+            result.innerHTML = html;
+        }
+
+        // Afficher le thème actuel au chargement
+        window.addEventListener('load', function() {
+            const currentTheme = document.getElementById('current-theme');
+            const theme = localStorage.getItem('theme') || 'light';
+            currentTheme.textContent = theme;
+        });
+    </script>
+</body>
+</html>
