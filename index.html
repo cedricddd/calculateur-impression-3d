@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
     <!-- Script inline pour initialiser les fonctions critiques -->
     <script>
@@ -45,6 +46,27 @@
                 const file = event.target.files[0];
                 if (!file) return;
 
+                console.log('📁 Fichier sélectionné:', file.name, 'Type:', file.type, 'Taille:', file.size);
+
+                // Vérifier le format du fichier
+                const fileName = file.name.toLowerCase();
+                const is3MF = fileName.endsWith('.3mf');
+                const isSTL = fileName.endsWith('.stl');
+
+                if (!isSTL && !is3MF) {
+                    alert('Format de fichier non supporté. Veuillez utiliser un fichier STL ou 3MF.');
+                    return;
+                }
+
+                // Si c'est un fichier 3MF
+                if (is3MF) {
+                    console.log('📦 Fichier 3MF détecté - Extraction des métadonnées...');
+                    handle3MFFile(file);
+                    return;
+                }
+
+                // Traitement des fichiers STL
+                console.log('🔷 Fichier STL détecté, analyse en cours...');
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     try {
@@ -56,12 +78,16 @@
                             const header = String.fromCharCode.apply(null, new Uint8Array(arrayBuffer.slice(0, 5)));
                             if (header === 'solid') {
                                 isBinary = false;
+                                console.log('📄 STL ASCII détecté');
+                            } else {
+                                console.log('📦 STL binaire détecté');
                             }
                         }
                         
                         let volume = 0;
                         if (isBinary && arrayBuffer.byteLength > 84) {
                             const numTriangles = view.getUint32(80, true);
+                            console.log('🔺 Nombre de triangles:', numTriangles);
                             for (let i = 0; i < numTriangles; i++) {
                                 const offset = 84 + i * 50 + 12;
                                 if (offset + 36 <= arrayBuffer.byteLength) {
@@ -85,10 +111,12 @@
                         }
                         
                         volume = Math.abs(volume) / 1000;
+                        console.log('📐 Volume calculé:', volume, 'cm³');
                         
                         const densityEl = document.getElementById('filamentDensity');
                         const density = densityEl ? parseFloat(densityEl.value) || 1.24 : 1.24;
                         const weight = volume * density;
+                        console.log('⚖️ Poids estimé:', weight, 'g (densité:', density, 'g/cm³)');
                         
                         // Mise à jour de l'interface
                         const stlInfo = document.getElementById('stlInfo');
@@ -110,6 +138,21 @@
                                     window.calculateCost();
                                 }
                             }
+                            
+                            // Stocker le volume pour le calcul du temps
+                            window.stlVolume = volume;
+                            console.log('✅ Volume STL stocké:', volume, 'cm³');
+                            
+                            // Calculer et afficher le temps estimé (avec un petit délai pour s'assurer que tout est chargé)
+                            setTimeout(function() {
+                                console.log('⏱️ Tentative de calcul du temps...');
+                                if (typeof window.updateTimeEstimate === 'function') {
+                                    console.log('✓ Fonction updateTimeEstimate trouvée');
+                                    window.updateTimeEstimate();
+                                } else {
+                                    console.error('✗ Fonction updateTimeEstimate non trouvée');
+                                }
+                            }, 100);
                         }
                     } catch (err) {
                         console.error('Erreur analyse STL:', err);
@@ -126,12 +169,259 @@
             }
         };
 
+        // Fonction pour estimer le temps d'impression
+        window.updateTimeEstimate = function() {
+            try {
+                console.log('🔍 updateTimeEstimate appelée');
+                const volume = window.stlVolume || 0;
+                console.log('📊 Volume STL:', volume, 'cm³');
+                
+                if (volume === 0) {
+                    console.warn('⚠️ Volume est 0, impossible de calculer le temps');
+                    return;
+                }
+                
+                // Récupérer les paramètres d'impression
+                const layerHeight = parseFloat(document.getElementById('layerHeight')?.value || 0.2);
+                const printSpeed = parseFloat(document.getElementById('printSpeed')?.value || 50);
+                const infillDensity = parseFloat(document.getElementById('infillDensity')?.value || 20) / 100;
+                const supportsEnabled = document.getElementById('supportsEnabled')?.value === 'true';
+                
+                console.log('⚙️ Paramètres:', {
+                    layerHeight,
+                    printSpeed,
+                    infillDensity: infillDensity * 100 + '%',
+                    supportsEnabled
+                });
+                
+                // Calcul du nombre de couches
+                // Estimation de la hauteur : on prend la racine cubique du volume pour obtenir une dimension moyenne
+                const avgDimension = Math.pow(volume * 1000, 1/3); // mm
+                const numLayers = Math.ceil(avgDimension / layerHeight);
+                
+                // Calcul du périmètre moyen par couche (approximation : objet rectangulaire)
+                const avgPerimeter = 4 * Math.pow(volume * 1000 / avgDimension, 0.5); // mm
+                
+                // Calcul de l'aire de remplissage par couche
+                const layerArea = (volume * 1000) / avgDimension; // mm²
+                
+                // Distance totale à parcourir
+                // Périmètre : 2-3 contours
+                const perimeterDistance = avgPerimeter * 2.5 * numLayers; // mm
+                
+                // Remplissage : dépend de la densité (pattern ligne à 45°)
+                const infillDistance = (layerArea * infillDensity * numLayers) / layerHeight; // mm
+                
+                // Supports (si activés) : environ 15% du volume avec du remplissage léger
+                const supportsDistance = supportsEnabled ? (volume * 150) : 0; // mm
+                
+                // Distance totale
+                const totalDistance = perimeterDistance + infillDistance + supportsDistance;
+                
+                // Temps brut (en minutes)
+                // Vitesse réduite pour les périmètres (70%), normale pour remplissage
+                const perimeterTime = (perimeterDistance / (printSpeed * 0.7)) / 60; // minutes
+                const infillTime = (infillDistance / printSpeed) / 60; // minutes
+                const supportsTime = (supportsDistance / (printSpeed * 0.8)) / 60; // minutes
+                
+                let totalMinutes = perimeterTime + infillTime + supportsTime;
+                
+                // Ajout des temps de déplacement, rétractation, etc. (+30%)
+                totalMinutes *= 1.3;
+                
+                // Arrondir
+                totalMinutes = Math.round(totalMinutes);
+                
+                // Convertir en heures et minutes
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = Math.round(totalMinutes % 60);
+                
+                console.log('⏱️ Temps calculé:', hours, 'h', minutes, 'min (', totalMinutes, 'minutes totales)');
+                
+                // Afficher le temps estimé
+                const timeEl = document.getElementById('stlTime');
+                if (timeEl) {
+                    timeEl.textContent = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
+                    console.log('✅ Temps affiché dans stlTime:', timeEl.textContent);
+                } else {
+                    console.error('✗ Élément stlTime non trouvé');
+                }
+                
+                // Mettre à jour les champs de temps d'impression
+                const printHoursEl = document.getElementById('printHours');
+                const printMinutesEl = document.getElementById('printMinutes');
+                
+                if (printHoursEl) {
+                    printHoursEl.value = hours;
+                    // Déclencher l'événement input pour mettre à jour l'affichage
+                    printHoursEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    console.log('✅ Champ printHours mis à jour:', hours);
+                } else {
+                    console.error('✗ Élément printHours non trouvé');
+                }
+                if (printMinutesEl) {
+                    printMinutesEl.value = minutes;
+                    // Déclencher l'événement input pour mettre à jour l'affichage
+                    printMinutesEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    console.log('✅ Champ printMinutes mis à jour:', minutes);
+                } else {
+                    console.error('✗ Élément printMinutes non trouvé');
+                }
+                
+                // Déclencher la mise à jour du temps total et du calcul
+                if (typeof window.calculateCost === 'function') {
+                    console.log('🔄 Déclenchement du recalcul des coûts...');
+                    window.calculateCost();
+                } else {
+                    console.warn('⚠️ Fonction calculateCost non disponible');
+                }
+                
+                console.log('✅ Calcul du temps terminé avec succès');
+                
+            } catch (err) {
+                console.error('❌ Erreur calcul temps:', err);
+            }
+        };
+
         // Fonction clearSTL - définie immédiatement
         window.clearSTL = function() {
             const stlInfo = document.getElementById('stlInfo');
             const stlInput = document.getElementById('stlFileInput');
             if (stlInfo) stlInfo.classList.add('hidden');
             if (stlInput) stlInput.value = '';
+            window.stlVolume = 0;
+        };
+
+        // Fonction pour gérer les fichiers 3MF
+        window.handle3MFFile = async function(file) {
+            try {
+                console.log('🔓 Décompression du fichier 3MF...');
+                
+                const zip = await JSZip.loadAsync(file);
+                console.log('✅ Fichier ZIP chargé, fichiers trouvés:', Object.keys(zip.files).length);
+                
+                // Lire le fichier 3dmodel.model (contient la géométrie et les métadonnées)
+                const modelFile = zip.file(/3D\/.*\.model$/i)[0] || zip.file(/.*\.model$/i)[0];
+                
+                if (!modelFile) {
+                    throw new Error('Fichier .model non trouvé dans le 3MF');
+                }
+                
+                console.log('📄 Lecture du fichier:', modelFile.name);
+                const modelXML = await modelFile.async('string');
+                
+                // Parser le XML
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(modelXML, 'text/xml');
+                
+                // Extraire les métadonnées
+                const metadata = {};
+                const metadataElements = xmlDoc.getElementsByTagName('metadata');
+                
+                for (let i = 0; i < metadataElements.length; i++) {
+                    const elem = metadataElements[i];
+                    const name = elem.getAttribute('name');
+                    const value = elem.textContent;
+                    if (name) {
+                        metadata[name] = value;
+                    }
+                }
+                
+                console.log('📊 Métadonnées extraites:', metadata);
+                
+                // Extraire les informations utiles
+                const printTime = parseFloat(metadata['print_time'] || metadata['time'] || metadata['slic3r:print_time'] || 0);
+                const filamentWeight = parseFloat(metadata['filament_weight'] || metadata['slic3r:filament_used_g'] || 0);
+                const filamentLength = parseFloat(metadata['filament_length'] || metadata['slic3r:filament_used_mm'] || 0);
+                const layerHeight = parseFloat(metadata['layer_height'] || metadata['slic3r:layer_height'] || 0.2);
+                const printSpeed = parseFloat(metadata['print_speed'] || metadata['slic3r:perimeter_speed'] || 50);
+                const infill = parseFloat(metadata['fill_density'] || metadata['slic3r:fill_density'] || 20);
+                
+                console.log('🎯 Données extraites:');
+                console.log('  ⏱️ Temps:', printTime, 'secondes (', Math.round(printTime/60), 'minutes)');
+                console.log('  ⚖️ Poids filament:', filamentWeight, 'g');
+                console.log('  📏 Longueur filament:', filamentLength, 'mm');
+                console.log('  📐 Hauteur couche:', layerHeight, 'mm');
+                console.log('  🏃 Vitesse:', printSpeed, 'mm/s');
+                console.log('  📊 Remplissage:', infill, '%');
+                
+                // Calculer le volume depuis le poids si disponible
+                const densityEl = document.getElementById('filamentDensity');
+                const density = densityEl ? parseFloat(densityEl.value) || 1.24 : 1.24;
+                const volume = filamentWeight > 0 ? filamentWeight / density : 0;
+                
+                // Afficher les informations
+                const stlInfo = document.getElementById('stlInfo');
+                if (stlInfo) {
+                    stlInfo.classList.remove('hidden');
+                    
+                    const fileNameEl = document.getElementById('stlFileName');
+                    const volumeEl = document.getElementById('stlVolume');
+                    const weightEl = document.getElementById('stlWeight');
+                    const timeEl = document.getElementById('stlTime');
+                    
+                    if (fileNameEl) fileNameEl.textContent = file.name + ' (3MF)';
+                    if (volumeEl) volumeEl.textContent = volume > 0 ? volume.toFixed(2) : 'N/A';
+                    if (weightEl) weightEl.textContent = filamentWeight > 0 ? filamentWeight.toFixed(2) : 'N/A';
+                    
+                    // Afficher le temps
+                    if (printTime > 0) {
+                        const hours = Math.floor(printTime / 3600);
+                        const minutes = Math.round((printTime % 3600) / 60);
+                        if (timeEl) timeEl.textContent = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
+                        
+                        // Remplir les champs de temps
+                        const printHoursEl = document.getElementById('printHours');
+                        const printMinutesEl = document.getElementById('printMinutes');
+                        
+                        if (printHoursEl) {
+                            printHoursEl.value = hours;
+                            printHoursEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        if (printMinutesEl) {
+                            printMinutesEl.value = minutes;
+                            printMinutesEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    } else if (timeEl) {
+                        timeEl.textContent = 'Non disponible';
+                    }
+                    
+                    // Remplir le poids
+                    if (filamentWeight > 0) {
+                        const weightInput = document.getElementById('filamentWeight');
+                        if (weightInput) {
+                            weightInput.value = filamentWeight.toFixed(2);
+                            weightInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    }
+                    
+                    // Remplir les paramètres d'impression si disponibles
+                    if (layerHeight > 0) {
+                        const layerHeightEl = document.getElementById('layerHeight');
+                        if (layerHeightEl) layerHeightEl.value = layerHeight;
+                    }
+                    if (printSpeed > 0) {
+                        const printSpeedEl = document.getElementById('printSpeed');
+                        if (printSpeedEl) printSpeedEl.value = printSpeed;
+                    }
+                    if (infill > 0) {
+                        const infillEl = document.getElementById('infillDensity');
+                        if (infillEl) infillEl.value = infill;
+                    }
+                }
+                
+                // Déclencher le recalcul des coûts
+                if (typeof window.calculateCost === 'function') {
+                    console.log('🔄 Déclenchement du recalcul des coûts...');
+                    window.calculateCost();
+                }
+                
+                console.log('✅ Extraction 3MF terminée avec succès');
+                
+            } catch (err) {
+                console.error('❌ Erreur lors du traitement du fichier 3MF:', err);
+                alert('Erreur lors de la lecture du fichier 3MF:\n' + err.message + '\n\nVeuillez utiliser un fichier STL à la place.');
+            }
         };
 
         // Charger le thème sauvegardé au chargement de la page
@@ -303,13 +593,13 @@
                     <!-- Import STL -->
                     <div class="mb-6">
                         <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center">
-                            <i class="fas fa-file-upload mr-2 text-purple-500"></i>Import STL (Optionnel)
+                            <i class="fas fa-file-upload mr-2 text-purple-500"></i>Import STL / 3MF (Optionnel)
                         </h3>
                         <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                            <input type="file" id="stlFileInput" accept=".stl" class="hidden" onchange="handleSTLUpload(event)">
+                            <input type="file" id="stlFileInput" accept=".stl,.3mf" class="hidden" onchange="handleSTLUpload(event)">
                             <label for="stlFileInput" class="cursor-pointer">
                                 <i class="fas fa-cloud-upload-alt text-5xl text-purple-500 mb-3"></i>
-                                <p class="text-gray-700 font-semibold mb-2">Glisser-déposer un fichier STL</p>
+                                <p class="text-gray-700 font-semibold mb-2">Glisser-déposer un fichier STL ou 3MF</p>
                                 <p class="text-gray-500 text-sm mb-3">ou cliquer pour sélectionner</p>
                                 <button type="button" onclick="document.getElementById('stlFileInput').click()" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg transition">
                                     <i class="fas fa-file-upload mr-2"></i>Choisir un fichier
@@ -320,9 +610,43 @@
                                     <p class="text-sm text-gray-700"><strong>Fichier :</strong> <span id="stlFileName"></span></p>
                                     <p class="text-sm text-gray-700"><strong>Volume estimé :</strong> <span id="stlVolume"></span> cm³</p>
                                     <p class="text-sm text-gray-700"><strong>Poids estimé :</strong> <span id="stlWeight"></span> g</p>
+                                    <p class="text-sm text-gray-700"><strong>Temps estimé :</strong> <span id="stlTime"></span></p>
                                     <button onclick="clearSTL()" class="mt-2 text-red-500 hover:text-red-700 text-sm">
                                         <i class="fas fa-times mr-1"></i>Supprimer
                                     </button>
+                                </div>
+                                
+                                <!-- Paramètres d'estimation du temps -->
+                                <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <p class="text-xs font-semibold text-gray-700 mb-2">⚙️ Paramètres d'impression</p>
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                            <label class="text-gray-600">Hauteur couche (mm)</label>
+                                            <input type="number" id="layerHeight" value="0.2" step="0.05" min="0.05" max="0.4" 
+                                                   class="w-full px-2 py-1 border border-gray-300 rounded text-xs" 
+                                                   onchange="if(typeof updateTimeEstimate === 'function') updateTimeEstimate()">
+                                        </div>
+                                        <div>
+                                            <label class="text-gray-600">Vitesse (mm/s)</label>
+                                            <input type="number" id="printSpeed" value="50" step="5" min="10" max="150" 
+                                                   class="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                                                   onchange="if(typeof updateTimeEstimate === 'function') updateTimeEstimate()">
+                                        </div>
+                                        <div>
+                                            <label class="text-gray-600">Remplissage (%)</label>
+                                            <input type="number" id="infillDensity" value="20" step="5" min="0" max="100" 
+                                                   class="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                                                   onchange="if(typeof updateTimeEstimate === 'function') updateTimeEstimate()">
+                                        </div>
+                                        <div>
+                                            <label class="text-gray-600">Supports</label>
+                                            <select id="supportsEnabled" class="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                                                    onchange="if(typeof updateTimeEstimate === 'function') updateTimeEstimate()">
+                                                <option value="false">Non</option>
+                                                <option value="true">Oui</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

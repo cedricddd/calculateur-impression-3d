@@ -1,16 +1,20 @@
 # 🚀 ACTION IMMÉDIATE - 3 Commandes
 
-## Ce Qui a Été Corrigé
+## 🎉 Nouvelle Version v3.3.0
 
-**Problème** : Mode sombre et Import STL ne fonctionnaient pas en Docker
-**Solution** : Script inline ajouté dans index.html (v3.0.1)
+**Support COMPLET des fichiers 3MF** 🎉
+- Extraction automatique du temps d'impression réel
+- Extraction du poids de filament exact
+- Extraction des paramètres d'impression (vitesse, hauteur, remplissage)
+- Remplissage automatique de tous les champs
+- **Calcul de coût 100% précis !**
 
 ## Déployer Maintenant (5 minutes)
 
 ### 1. Push GitHub
 ```bash
 git add .
-git commit -m "Fix: Mode sombre et import STL (v3.0.1)"
+git commit -m "Feat: Support complet 3MF avec extraction métadonnées (v3.3.0)"
 git push origin main
 ```
 
@@ -19,43 +23,35 @@ git push origin main
 2. Cliquez "Pull and redeploy"
 3. Attendez 30 secondes
 
-### 3. Vider le Cache
+### 3. Vider le Cache ⚠️ IMPORTANT
 - **Windows** : `Ctrl + Shift + R`
 - **Mac** : `Cmd + Shift + R`
 
 ## Tester
 
-**URL** : `http://IP_SERVEUR:3080`
+**URL** : `http://192.168.1.124:3080`
 
-✅ Mode sombre fonctionne  
-✅ Import STL fonctionne  
-✅ Pas d'erreur dans la console (F12)
+✅ Exportez un 3MF depuis PrusaSlicer / Bambu Studio  
+✅ Glissez-le dans le calculateur  
+✅ **Tous les champs sont remplis automatiquement !**  
+✅ Temps, poids et paramètres **exacts** depuis le slicer
 
-**Test auto** : `http://IP_SERVEUR:3080/test-auto.html`
+**Documentation** : [SUPPORT-3MF-COMPLET.md](SUPPORT-3MF-COMPLET.md)
 
-## Documentation
+## Console (F12)
 
-- **CHECKLIST-DEPLOIEMENT.md** ← Guide complet étape par étape
-- **RECAPITULATIF.md** ← Détails des corrections
-- **CORRECTIF-DOCKER.md** ← Dépannage Docker
-- **README.md** ← Documentation principale
-
-## Problème ?
-
-```bash
-# Vérifier la version
-docker ps --filter "name=calculateur" --format "{{.Label \"com.example.version\"}}"
-# Doit afficher: 3.0.1
-
-# Logs
-docker logs calculateur-impression-3d
-
-# Tests
-./test-docker.sh
+Ouvrez la console pour voir les logs :
+```
+📦 Fichier 3MF détecté - Extraction des métadonnées...
+🔓 Décompression du fichier 3MF...
+✅ Fichier ZIP chargé
+📊 Métadonnées extraites
+  ⏱️ Temps: 18450 secondes ( 308 minutes)
+  ⚖️ Poids filament: 60.5 g
+✅ Extraction 3MF terminée avec succès
 ```
 
 ---
 
-**C'est tout !** 🎉
-
-Suivez les 3 étapes ci-dessus et tout fonctionnera.
+**Version** : 3.3.0 🎉  
+**Type** : Support 3MF complet avec JSZip

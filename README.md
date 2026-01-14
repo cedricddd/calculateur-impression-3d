@@ -2,7 +2,7 @@
 
 Un outil web complet et intuitif pour calculer précisément le coût de vos impressions 3D, incluant tous les paramètres importants : filament, électricité, amortissement, maintenance et marge bénéficiaire.
 
-**🔥 Version 3.0.1** - Correctifs Docker/Portainer (Mode sombre et Import STL)
+**🔥 Version 3.3.0** - Support Complet des Fichiers 3MF avec Extraction des Métadonnées 🎉
 
 ## 🚀 Déploiement Rapide
 
@@ -19,6 +19,14 @@ Ouvrez `test-auto.html` ou `test-diagnostic.html` dans votre navigateur pour vé
 
 ## 🎯 Fonctionnalités actuellement complétées
 
+### ✨ NOUVEAU - Estimation du Temps d'Impression (v3.1.0)
+- **⏱️ Calcul automatique du temps** : Estimation du temps d'impression depuis le fichier STL
+- **⚙️ Paramètres personnalisables** : Hauteur de couche, vitesse, remplissage, supports
+- **📊 Mise à jour en temps réel** : Modifiez les paramètres et le temps se recalcule instantanément
+- **🎯 Estimation intelligente** : Prend en compte les périmètres, le remplissage et les supports
+- **🔄 Intégration automatique** : Les champs heures/minutes sont remplis automatiquement
+- **📖 Documentation complète** : Voir [ESTIMATION-TEMPS.md](ESTIMATION-TEMPS.md)
+
 ### ✅ Mode Sombre (v3.0.1 - Corrigé pour Docker)
 - **Toggle mode sombre/clair** : Bouton en haut à droite pour basculer entre les thèmes
 - **Persistance** : Le thème sélectionné est sauvegardé dans le navigateur
@@ -26,13 +34,21 @@ Ouvrez `test-auto.html` ou `test-diagnostic.html` dans votre navigateur pour vé
 - **Confort visuel** : Réduit la fatigue oculaire lors d'utilisation prolongée
 - **✅ Fonctionne en Docker** : Script inline pour chargement immédiat
 
-### ✅ Import STL (v3.0.1 - Corrigé pour Docker)
-- **Upload de fichiers** : Glisser-déposer ou sélection de fichier STL
-- **Analyse automatique** : Calcul du volume et estimation du poids
+### ✅ Import STL / 3MF (v3.3.0 - Support 3MF Complet) 🎉
+- **Upload de fichiers** : Glisser-déposer ou sélection de fichier STL ou 3MF
+- **STL complet** : Analyse automatique du volume et estimation du poids
+- **✨ 3MF complet** : Extraction automatique de toutes les métadonnées !
+  - ⏱️ Temps d'impression réel (depuis le slicer)
+  - ⚖️ Poids de filament exact
+  - 📏 Longueur de filament
+  - 📐 Hauteur de couche
+  - 🏃 Vitesse d'impression
+  - 📊 Taux de remplissage
+- **Remplissage automatique** : Tous les champs sont pré-remplis avec les valeurs du slicer
 - **Support binaire et ASCII** : Compatible avec les deux formats STL
-- **Mise à jour automatique** : Le poids estimé est appliqué au formulaire
-- **Affichage des informations** : Nom du fichier, volume (cm³), poids estimé (g)
-- **✅ Fonctionne en Docker** : Analyse STL simplifiée sans dépendance Three.js
+- **Compatibilité slicers** : PrusaSlicer, Bambu Studio, Cura, Simplify3D
+- **✅ Fonctionne en Docker** : JSZip intégré via CDN
+- **📖 Documentation** : [SUPPORT-3MF-COMPLET.md](SUPPORT-3MF-COMPLET.md)
 
 ### ✅ Comparaison de Matériaux
 - **Tableau comparatif** : Comparez plusieurs matériaux côte à côte
@@ -281,10 +297,48 @@ Consultez les guides détaillés :
 ---
 
 **Dernière mise à jour** : 2026-01-14  
-**Version** : 3.0.1  
+**Version** : 3.3.0  
 **Licence** : MIT
 
 ## 🎉 Changelog
+
+### v3.3.0 (2026-01-14) - Support Complet des Fichiers 3MF 🎉
+- ✨ **Extraction des métadonnées 3MF** : Lecture complète des fichiers 3MF
+- 🔓 **Décompression automatique** : JSZip intégré pour lire les fichiers ZIP
+- ⏱️ **Temps d'impression réel** : Extrait depuis le slicer (PrusaSlicer, Bambu Studio, etc.)
+- ⚖️ **Poids exact** : Poids de filament réel depuis le slicer
+- 📐 **Paramètres d'impression** : Hauteur de couche, vitesse, remplissage extraits automatiquement
+- 🔄 **Remplissage automatique** : Tous les champs sont pré-remplis avec les valeurs exactes
+- 🎯 **Calcul précis** : Coût calculé avec les valeurs réelles du slicer
+- 📖 **Documentation complète** : Guide détaillé dans [SUPPORT-3MF-COMPLET.md](SUPPORT-3MF-COMPLET.md)
+
+### v3.2.0 (2026-01-14) - Support des Fichiers 3MF 📦
+- ✨ **Support 3MF** : Détection automatique des fichiers 3MF
+- ℹ️ **Message informatif** : L'utilisateur est informé que le support complet arrive bientôt
+- ✅ **Validation de format** : Message d'erreur pour les formats non supportés
+- 🔍 **Logs améliorés** : Debug détaillé pour STL et 3MF
+- 📖 **Documentation** : Guide complet dans [SUPPORT-3MF.md](SUPPORT-3MF.md)
+- 🚀 **Prochainement** : Extraction des métadonnées 3MF (temps, paramètres, etc.)
+
+### v3.1.2 (2026-01-14) - Version Debug 🔍
+- 🐛 **Logs de debug** : Ajout de logs détaillés pour diagnostiquer les problèmes de calcul de temps
+- 📊 **Messages console** : Suivi complet de l'exécution (volume, paramètres, calculs, mise à jour)
+- 🔧 **Diagnostic** : Guide de debug dans [DEBUG-TEMPS.md](DEBUG-TEMPS.md)
+
+### v3.1.1 (2026-01-14) - Correctif Mise à Jour des Champs 🐛
+- 🐛 **Fix Champs Heures/Minutes** : Les champs se remplissent maintenant automatiquement après l'import STL
+- 🐛 **Fix Temps Total** : L'affichage "Temps total" se met à jour correctement
+- 🔧 **Fix Événements** : Déclenchement automatique des événements `input` pour mettre à jour l'interface
+- ⏱️ **Fix Délai** : Ajout d'un délai de sécurité pour s'assurer que tout est chargé
+- 📝 **Documentation** : Guide de correctif dans [CORRECTIF-V3.1.1.md](CORRECTIF-V3.1.1.md)
+
+### v3.1.0 (2026-01-14) - Estimation Automatique du Temps d'Impression ⏱️
+- ✨ **Estimation du temps d'impression** : Calcul automatique depuis le fichier STL
+- ⚙️ **Paramètres d'impression** : Hauteur de couche, vitesse, remplissage, supports
+- 📊 **Algorithme intelligent** : Prise en compte des périmètres, remplissage et supports
+- 🔄 **Mise à jour automatique** : Les champs heures/minutes sont remplis automatiquement
+- 🎯 **Recalcul en temps réel** : Modifiez les paramètres et le temps se met à jour
+- 📖 **Documentation complète** : Guide détaillé dans [ESTIMATION-TEMPS.md](ESTIMATION-TEMPS.md)
 
 ### v3.0.1 (2026-01-14) - Correctif Docker/Portainer
 - 🐛 **Fix Mode sombre** : Ajout d'un script inline pour chargement immédiat
