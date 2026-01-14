@@ -11,6 +11,7 @@ LABEL version="2.1.0"
 # Copier les fichiers de l'application dans le répertoire Nginx
 COPY index.html /usr/share/nginx/html/
 COPY js/ /usr/share/nginx/html/js/
+COPY images/ /usr/share/nginx/html/images/
 COPY README.md /usr/share/nginx/html/
 
 # Configuration Nginx personnalisée (optionnel)
