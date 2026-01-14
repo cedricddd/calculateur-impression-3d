@@ -6,6 +6,22 @@
     <title>Calculateur de Prix d'Impression 3D</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Désactiver l'avertissement Tailwind CDN en production
+        tailwind.config = {
+            corePlugins: {
+                preflight: false,
+            }
+        }
+        // Masquer l'avertissement console
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            if (args[0] && args[0].includes && args[0].includes('cdn.tailwindcss.com')) {
+                return; // Ignorer l'avertissement Tailwind
+            }
+            originalWarn.apply(console, args);
+        };
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
