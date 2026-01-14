@@ -363,7 +363,54 @@
                     console.log('📊 Configuration de tranchage extraite:', sliceConfig);
                 }
                 
-                // Extraire les informations utiles (priorité : JSON > XML > Config > Défaut)
+                // Chercher et lire le G-code pour extraire les métadonnées
+                let gcodeData = {};
+                const gcodeFile = zip.file(/Metadata\/plate_\d+\.gcode$/i)[0];
+                
+                if (gcodeFile) {
+                    console.log('📄 Lecture du fichier G-code:', gcodeFile.name);
+                    const gcodeContent = await gcodeFile.async('string');
+                    
+                    // Extraire les 100 premières lignes (header contient les métadonnées)
+                    const lines = gcodeContent.split('\n').slice(0, 100);
+                    
+                    for (const line of lines) {
+                        // Chercher les lignes de commentaires avec des métadonnées
+                        if (line.startsWith(';')) {
+                            // Temps d'impression: ; model printing time: 32m 19s
+                            if (line.includes('model printing time:')) {
+                                const timeMatch = line.match(/model printing time:\s*(.+)/i);
+                                if (timeMatch) gcodeData.model_time = timeMatch[1].trim();
+                            }
+                            // Temps total: ; total estimated time: 39m 30s
+                            if (line.includes('total estimated time:') || line.includes('estimated printing time')) {
+                                const timeMatch = line.match(/(?:total estimated time|estimated printing time)[^:]*:\s*(.+)/i);
+                                if (timeMatch) gcodeData.total_time = timeMatch[1].trim();
+                            }
+                            // Poids: ; total filament weight [g] : 12.04
+                            if (line.includes('filament weight') || line.includes('filament used [g]')) {
+                                const weightMatch = line.match(/(?:filament weight|filament used \[g\])[^\d]*([0-9.]+)/i);
+                                if (weightMatch) gcodeData.weight = parseFloat(weightMatch[1]);
+                            }
+                            // Longueur: ; total filament length [mm] : 3909.48
+                            if (line.includes('filament length') || line.includes('filament used [mm]')) {
+                                const lengthMatch = line.match(/(?:filament length|filament used \[mm\])[^\d]*([0-9.]+)/i);
+                                if (lengthMatch) gcodeData.length = parseFloat(lengthMatch[1]);
+                            }
+                            // Nombre de couches: ; total layer number: 93
+                            if (line.includes('total layer') || line.includes('layer_num')) {
+                                const layerMatch = line.match(/(?:total layer|layer_num)[^\d]*([0-9]+)/i);
+                                if (layerMatch) gcodeData.layer_count = parseInt(layerMatch[1]);
+                            }
+                        }
+                    }
+                    
+                    if (Object.keys(gcodeData).length > 0) {
+                        console.log('📊 Données extraites depuis le G-code:', gcodeData);
+                    }
+                }
+                
+                // Extraire les informations utiles (priorité : JSON > G-code > XML > Config > Défaut)
                 let printTime = 0;
                 let filamentWeight = 0;
                 let filamentLength = 0;
@@ -371,23 +418,34 @@
                 let printSpeed = 50;
                 let infill = 20;
                 
+                // Fonction pour parser le temps (format: "32m 19s" ou "1h 30m")
+                function parseTimeString(timeStr) {
+                    const hourMatch = timeStr.match(/(\d+)h/);
+                    const minMatch = timeStr.match(/(\d+)m/);
+                    const secMatch = timeStr.match(/(\d+)s/);
+                    const hours = hourMatch ? parseInt(hourMatch[1]) : 0;
+                    const minutes = minMatch ? parseInt(minMatch[1]) : 0;
+                    const seconds = secMatch ? parseInt(secMatch[1]) : 0;
+                    return hours * 3600 + minutes * 60 + seconds;
+                }
+                
                 // Temps d'impression
                 if (plateData?.prediction) {
                     printTime = parseFloat(plateData.prediction) || 0;
-                    console.log('  ⏱️ Temps depuis JSON:', printTime, 'secondes');
+                    console.log('  ⏱️ Temps depuis JSON (prediction):', printTime, 'secondes');
                 } else if (plateData?.print_time) {
                     // Format possible: "5h 23m" ou nombre de secondes
                     const timeStr = String(plateData.print_time);
-                    const hourMatch = timeStr.match(/(\d+)h/);
-                    const minMatch = timeStr.match(/(\d+)m/);
-                    if (hourMatch || minMatch) {
-                        const hours = hourMatch ? parseInt(hourMatch[1]) : 0;
-                        const minutes = minMatch ? parseInt(minMatch[1]) : 0;
-                        printTime = hours * 3600 + minutes * 60;
-                    } else {
-                        printTime = parseFloat(timeStr) || 0;
-                    }
-                    console.log('  ⏱️ Temps depuis JSON (formaté):', printTime, 'secondes');
+                    printTime = parseTimeString(timeStr) || parseFloat(timeStr) || 0;
+                    console.log('  ⏱️ Temps depuis JSON (print_time):', printTime, 'secondes');
+                } else if (gcodeData.model_time) {
+                    // Temps depuis le G-code: "32m 19s"
+                    printTime = parseTimeString(gcodeData.model_time);
+                    console.log('  ⏱️ Temps depuis G-code (model):', printTime, 'secondes');
+                } else if (gcodeData.total_time) {
+                    // Temps total depuis le G-code: "39m 30s"
+                    printTime = parseTimeString(gcodeData.total_time);
+                    console.log('  ⏱️ Temps depuis G-code (total):', printTime, 'secondes');
                 } else {
                     printTime = parseFloat(metadata['print_time'] || metadata['time'] || metadata['slic3r:print_time'] || 0);
                     if (printTime > 0) console.log('  ⏱️ Temps depuis XML:', printTime, 'secondes');
@@ -396,10 +454,13 @@
                 // Poids du filament
                 if (plateData?.filament_used_g) {
                     filamentWeight = parseFloat(plateData.filament_used_g) || 0;
-                    console.log('  ⚖️ Poids depuis JSON:', filamentWeight, 'g');
+                    console.log('  ⚖️ Poids depuis JSON (filament_used_g):', filamentWeight, 'g');
                 } else if (plateData?.weight) {
                     filamentWeight = parseFloat(plateData.weight) || 0;
                     console.log('  ⚖️ Poids depuis JSON (weight):', filamentWeight, 'g');
+                } else if (gcodeData.weight) {
+                    filamentWeight = gcodeData.weight;
+                    console.log('  ⚖️ Poids depuis G-code:', filamentWeight, 'g');
                 } else {
                     filamentWeight = parseFloat(metadata['filament_weight'] || metadata['slic3r:filament_used_g'] || 0);
                     if (filamentWeight > 0) console.log('  ⚖️ Poids depuis XML:', filamentWeight, 'g');
@@ -408,7 +469,10 @@
                 // Longueur du filament
                 if (plateData?.filament_used_mm) {
                     filamentLength = parseFloat(plateData.filament_used_mm) || 0;
-                    console.log('  📏 Longueur depuis JSON:', filamentLength, 'mm');
+                    console.log('  📏 Longueur depuis JSON (filament_used_mm):', filamentLength, 'mm');
+                } else if (gcodeData.length) {
+                    filamentLength = gcodeData.length;
+                    console.log('  📏 Longueur depuis G-code:', filamentLength, 'mm');
                 } else {
                     filamentLength = parseFloat(metadata['filament_length'] || metadata['slic3r:filament_used_mm'] || 0);
                     if (filamentLength > 0) console.log('  📏 Longueur depuis XML:', filamentLength, 'mm');

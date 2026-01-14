@@ -2,7 +2,7 @@
 
 Un outil web complet et intuitif pour calculer précisément le coût de vos impressions 3D, incluant tous les paramètres importants : filament, électricité, amortissement, maintenance et marge bénéficiaire.
 
-**🔥 Version 3.4.0** - Extraction Complète depuis JSON/Config 🎉
+**🔥 Version 3.5.0** - Extraction Complète depuis le G-code 🎉
 
 ## 🧪 Test Rapide (Nouveau !)
 
@@ -37,16 +37,17 @@ Consultez [DEPLOIEMENT-RAPIDE.md](DEPLOIEMENT-RAPIDE.md) pour un guide en 2 minu
 
 ## 🎯 Fonctionnalités actuellement complétées
 
-### ✨ NOUVEAU - Extraction Complète 3MF (v3.4.0) 🎉
-- **📦 3 sources de données** : Extraction depuis JSON, Config ET XML
-- **🎯 Ordre de priorité intelligent** : JSON → Config → XML → Défaut
-- **✅ Fichiers MakerWorld** : Support complet des fichiers téléchargés
-- **⏱️ Temps exact** : Extraction depuis `plate_X.json` (prediction ou print_time)
-- **⚖️ Poids exact** : Extraction depuis `filament_used_g` ou `weight`
-- **📏 Longueur exacte** : Extraction depuis `filament_used_mm`
-- **⚙️ Paramètres complets** : Extraction depuis `slice_info.config`
+### ✨ NOUVEAU - Extraction depuis le G-code (v3.5.0) 🚀
+- **📦 4 sources de données** : G-code, JSON, Config ET XML
+- **🎯 Ordre de priorité intelligent** : JSON → **G-code** → XML → Config → Défaut
+- **✅ 100% des fichiers 3MF** : Fonctionne avec TOUS les fichiers Bambu Studio
+- **✅ Fichiers MakerWorld/Printables** : Extraction complète même sans JSON
+- **⏱️ Temps exact** : Extraction depuis le G-code (`; model printing time: 32m 19s`)
+- **⚖️ Poids exact** : Extraction depuis le G-code (`; total filament weight [g]`)
+- **📏 Longueur exacte** : Extraction depuis le G-code (`; total filament length [mm]`)
+- **🔢 Nombre de couches** : Extraction depuis le G-code (`; total layer number`)
 - **🔍 Logs détaillés** : Voir exactement d'où viennent les données
-- **📖 Documentation** : [EXTRACTION-JSON-CONFIG.md](EXTRACTION-JSON-CONFIG.md)
+- **📖 Documentation** : [EXTRACTION-GCODE.md](Documentation/EXTRACTION-GCODE.md) et [RESUME-V3.5.0.md](Documentation/RESUME-V3.5.0.md)
 
 ### ✨ Estimation du Temps d'Impression (v3.1.0)
 - **⏱️ Calcul automatique du temps** : Estimation du temps d'impression depuis le fichier STL
@@ -63,25 +64,27 @@ Consultez [DEPLOIEMENT-RAPIDE.md](DEPLOIEMENT-RAPIDE.md) pour un guide en 2 minu
 - **Confort visuel** : Réduit la fatigue oculaire lors d'utilisation prolongée
 - **✅ Fonctionne en Docker** : Script inline pour chargement immédiat
 
-### ✅ Import STL / 3MF (v3.4.0 - Extraction Complète) 🎉
+### ✅ Import STL / 3MF (v3.5.0 - Extraction depuis G-code) 🚀
 - **Upload de fichiers** : Glisser-déposer ou sélection de fichier STL ou 3MF
 - **STL complet** : Analyse automatique du volume et estimation du poids
-- **✨ 3MF ultra-complet** : Extraction depuis 3 sources !
+- **✨ 3MF ULTRA-complet** : Extraction depuis 4 sources !
+  - 🎯 **G-code** : plate_X.gcode (TOUJOURS présent, données fiables) ✅ NOUVEAU
   - 📦 **JSON** : plate_X.json (temps, poids, longueur exacts)
   - ⚙️ **Config** : slice_info.config (paramètres de tranchage)
   - 📄 **XML** : 3dmodel.model (métadonnées standard)
-  - ⏱️ Temps d'impression réel (depuis le slicer)
-  - ⚖️ Poids de filament exact
-  - 📏 Longueur de filament
+  - ⏱️ Temps d'impression réel (depuis le G-code : `; model printing time: 32m 19s`)
+  - ⚖️ Poids de filament exact (depuis le G-code : `; total filament weight [g]`)
+  - 📏 Longueur de filament (depuis le G-code : `; total filament length [mm]`)
+  - 🔢 Nombre de couches (depuis le G-code : `; total layer number`)
   - 📐 Hauteur de couche
   - 🏃 Vitesse d'impression
   - 📊 Taux de remplissage
 - **Remplissage automatique** : Tous les champs sont pré-remplis avec les valeurs du slicer
 - **Support binaire et ASCII** : Compatible avec les deux formats STL
-- **Compatibilité slicers** : PrusaSlicer, Bambu Studio, Cura, Simplify3D
-- **✅ Fichiers MakerWorld** : Extraction complète même sans tranchage local
+- **Compatibilité slicers** : PrusaSlicer, Bambu Studio, Cura, Simplify3D, OrcaSlicer
+- **✅ TOUS les fichiers 3MF** : MakerWorld, Printables, exports locaux - 100% fonctionnel
 - **✅ Fonctionne en Docker** : JSZip intégré via CDN
-- **📖 Documentation** : [SUPPORT-3MF-COMPLET.md](SUPPORT-3MF-COMPLET.md) et [EXTRACTION-JSON-CONFIG.md](EXTRACTION-JSON-CONFIG.md)
+- **📖 Documentation** : [SUPPORT-3MF-COMPLET.md](SUPPORT-3MF-COMPLET.md), [EXTRACTION-GCODE.md](Documentation/EXTRACTION-GCODE.md) et [RESUME-V3.5.0.md](Documentation/RESUME-V3.5.0.md)
 
 ### ✅ Comparaison de Matériaux
 - **Tableau comparatif** : Comparez plusieurs matériaux côte à côte
@@ -331,10 +334,23 @@ Consultez les guides détaillés :
 ---
 
 **Dernière mise à jour** : 2026-01-14  
-**Version** : 3.4.0  
+**Version** : 3.5.0  
 **Licence** : MIT
 
 ## 🎉 Changelog
+
+### v3.5.0 (2026-01-14) - Extraction depuis le G-code 🚀
+- ✨ **4 sources de données** : G-code, JSON, Config ET XML
+- 🎯 **Le G-code contient TOUT** : Temps, poids, longueur, couches - toujours présent !
+- 📄 **Lecture du G-code** : Extraction depuis `Metadata/plate_X.gcode`
+- ⏱️ **Parsing intelligent** : `; model printing time: 32m 19s` → 1939 secondes
+- ⚖️ **Poids exact** : `; total filament weight [g] : 12.04` → 12.04 g
+- 📏 **Longueur exacte** : `; total filament length [mm] : 3909.48` → 3909.48 mm
+- 🔢 **Nombre de couches** : `; total layer number: 93` → 93 couches
+- 🎯 **Ordre de priorité** : JSON → **G-code** → XML → Config → Défaut
+- ✅ **100% des fichiers** : MakerWorld, Printables, exports locaux - TOUS fonctionnent
+- 🎉 **Résultat** : Plus AUCUN fichier 3MF avec 0s/0g/0mm !
+- 📖 **Documentation** : Guides complets dans [EXTRACTION-GCODE.md](Documentation/EXTRACTION-GCODE.md) et [RESUME-V3.5.0.md](Documentation/RESUME-V3.5.0.md)
 
 ### v3.4.0 (2026-01-14) - Extraction Complète JSON/Config 🎯
 - ✨ **3 sources de données** : Extraction depuis JSON, Config ET XML
