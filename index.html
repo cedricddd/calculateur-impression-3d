@@ -328,15 +328,132 @@
                     }
                 }
                 
-                console.log('📊 Métadonnées extraites:', metadata);
+                console.log('📊 Métadonnées XML extraites:', metadata);
                 
-                // Extraire les informations utiles
-                const printTime = parseFloat(metadata['print_time'] || metadata['time'] || metadata['slic3r:print_time'] || 0);
-                const filamentWeight = parseFloat(metadata['filament_weight'] || metadata['slic3r:filament_used_g'] || 0);
-                const filamentLength = parseFloat(metadata['filament_length'] || metadata['slic3r:filament_used_mm'] || 0);
-                const layerHeight = parseFloat(metadata['layer_height'] || metadata['slic3r:layer_height'] || 0.2);
-                const printSpeed = parseFloat(metadata['print_speed'] || metadata['slic3r:perimeter_speed'] || 50);
-                const infill = parseFloat(metadata['fill_density'] || metadata['slic3r:fill_density'] || 20);
+                // Chercher et lire les fichiers JSON de Bambu Studio
+                let plateData = null;
+                const plateJsonFile = zip.file(/Metadata\/plate_\d+\.json$/i)[0];
+                
+                if (plateJsonFile) {
+                    console.log('📄 Lecture du fichier:', plateJsonFile.name);
+                    const plateJsonContent = await plateJsonFile.async('string');
+                    try {
+                        plateData = JSON.parse(plateJsonContent);
+                        console.log('📊 Données de plaque extraites:', plateData);
+                    } catch (e) {
+                        console.warn('⚠️ Erreur lors du parsing du JSON:', e);
+                    }
+                }
+                
+                // Chercher et lire slice_info.config
+                let sliceConfig = {};
+                const sliceInfoFile = zip.file(/Metadata\/slice_info\.config$/i)[0];
+                
+                if (sliceInfoFile) {
+                    console.log('📄 Lecture du fichier:', sliceInfoFile.name);
+                    const sliceInfoContent = await sliceInfoFile.async('string');
+                    
+                    // Parser le fichier config (format key = value)
+                    sliceInfoContent.split('\n').forEach(line => {
+                        const match = line.match(/^(\w+)\s*=\s*(.+)$/);
+                        if (match) {
+                            sliceConfig[match[1]] = match[2].trim();
+                        }
+                    });
+                    console.log('📊 Configuration de tranchage extraite:', sliceConfig);
+                }
+                
+                // Extraire les informations utiles (priorité : JSON > XML > Config > Défaut)
+                let printTime = 0;
+                let filamentWeight = 0;
+                let filamentLength = 0;
+                let layerHeight = 0.2;
+                let printSpeed = 50;
+                let infill = 20;
+                
+                // Temps d'impression
+                if (plateData?.prediction) {
+                    printTime = parseFloat(plateData.prediction) || 0;
+                    console.log('  ⏱️ Temps depuis JSON:', printTime, 'secondes');
+                } else if (plateData?.print_time) {
+                    // Format possible: "5h 23m" ou nombre de secondes
+                    const timeStr = String(plateData.print_time);
+                    const hourMatch = timeStr.match(/(\d+)h/);
+                    const minMatch = timeStr.match(/(\d+)m/);
+                    if (hourMatch || minMatch) {
+                        const hours = hourMatch ? parseInt(hourMatch[1]) : 0;
+                        const minutes = minMatch ? parseInt(minMatch[1]) : 0;
+                        printTime = hours * 3600 + minutes * 60;
+                    } else {
+                        printTime = parseFloat(timeStr) || 0;
+                    }
+                    console.log('  ⏱️ Temps depuis JSON (formaté):', printTime, 'secondes');
+                } else {
+                    printTime = parseFloat(metadata['print_time'] || metadata['time'] || metadata['slic3r:print_time'] || 0);
+                    if (printTime > 0) console.log('  ⏱️ Temps depuis XML:', printTime, 'secondes');
+                }
+                
+                // Poids du filament
+                if (plateData?.filament_used_g) {
+                    filamentWeight = parseFloat(plateData.filament_used_g) || 0;
+                    console.log('  ⚖️ Poids depuis JSON:', filamentWeight, 'g');
+                } else if (plateData?.weight) {
+                    filamentWeight = parseFloat(plateData.weight) || 0;
+                    console.log('  ⚖️ Poids depuis JSON (weight):', filamentWeight, 'g');
+                } else {
+                    filamentWeight = parseFloat(metadata['filament_weight'] || metadata['slic3r:filament_used_g'] || 0);
+                    if (filamentWeight > 0) console.log('  ⚖️ Poids depuis XML:', filamentWeight, 'g');
+                }
+                
+                // Longueur du filament
+                if (plateData?.filament_used_mm) {
+                    filamentLength = parseFloat(plateData.filament_used_mm) || 0;
+                    console.log('  📏 Longueur depuis JSON:', filamentLength, 'mm');
+                } else {
+                    filamentLength = parseFloat(metadata['filament_length'] || metadata['slic3r:filament_used_mm'] || 0);
+                    if (filamentLength > 0) console.log('  📏 Longueur depuis XML:', filamentLength, 'mm');
+                }
+                
+                // Hauteur de couche
+                if (sliceConfig.layer_height) {
+                    layerHeight = parseFloat(sliceConfig.layer_height) || 0.2;
+                    console.log('  📐 Hauteur depuis config:', layerHeight, 'mm');
+                } else if (plateData?.layer_height) {
+                    layerHeight = parseFloat(plateData.layer_height) || 0.2;
+                    console.log('  📐 Hauteur depuis JSON:', layerHeight, 'mm');
+                } else {
+                    layerHeight = parseFloat(metadata['layer_height'] || metadata['slic3r:layer_height'] || 0.2);
+                    if (layerHeight !== 0.2) console.log('  📐 Hauteur depuis XML:', layerHeight, 'mm');
+                }
+                
+                // Vitesse d'impression
+                if (sliceConfig.print_speed) {
+                    printSpeed = parseFloat(sliceConfig.print_speed) || 50;
+                    console.log('  🏃 Vitesse depuis config:', printSpeed, 'mm/s');
+                } else if (sliceConfig.default_speed) {
+                    printSpeed = parseFloat(sliceConfig.default_speed) || 50;
+                    console.log('  🏃 Vitesse depuis config (default):', printSpeed, 'mm/s');
+                } else {
+                    printSpeed = parseFloat(metadata['print_speed'] || metadata['slic3r:perimeter_speed'] || 50);
+                    if (printSpeed !== 50) console.log('  🏃 Vitesse depuis XML:', printSpeed, 'mm/s');
+                }
+                
+                // Taux de remplissage
+                if (sliceConfig.sparse_infill_density) {
+                    // Format possible: "20%" ou "0.2"
+                    const infillStr = String(sliceConfig.sparse_infill_density).replace('%', '');
+                    infill = parseFloat(infillStr) || 20;
+                    if (infill <= 1) infill *= 100; // Convertir 0.2 en 20
+                    console.log('  📊 Remplissage depuis config:', infill, '%');
+                } else if (plateData?.infill_density) {
+                    const infillStr = String(plateData.infill_density).replace('%', '');
+                    infill = parseFloat(infillStr) || 20;
+                    if (infill <= 1) infill *= 100;
+                    console.log('  📊 Remplissage depuis JSON:', infill, '%');
+                } else {
+                    infill = parseFloat(metadata['fill_density'] || metadata['slic3r:fill_density'] || 20);
+                    if (infill !== 20) console.log('  📊 Remplissage depuis XML:', infill, '%');
+                }
                 
                 console.log('🎯 Données extraites:');
                 console.log('  ⏱️ Temps:', printTime, 'secondes (', Math.round(printTime/60), 'minutes)');

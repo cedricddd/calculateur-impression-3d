@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test 3MF Simple</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .status.info { background: #e3f2fd; color: #1976d2; }
+        .status.success { background: #e8f5e9; color: #388e3c; }
+        .status.error { background: #ffebee; color: #d32f2f; }
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+        .upload-zone:hover { background: #e9ecef; border-color: #764ba2; }
+        .upload-zone.dragover { background: #d4d8ff; border-color: #667eea; }
+        .upload-icon { font-size: 64px; margin-bottom: 20px; }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+        .results.show { display: block; }
+        .result-item {
+            padding: 10px;
+            margin: 8px 0;
+            background: white;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .result-label { font-weight: 600; color: #555; }
+        .result-value { color: #333; font-size: 18px; margin-top: 5px; }
+        #console {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-line { padding: 4px 0; border-bottom: 1px solid #333; }
+        .log-info { color: #4fc3f7; }
+        .log-success { color: #66bb6a; }
+        .log-error { color: #ef5350; }
+        .log-data { color: #ffd54f; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        button:hover { background: #764ba2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Support 3MF / STL</h1>
+        
+        <div id="status" class="status info">
+            ℹ️ Prêt à tester - Glissez un fichier .3mf ou .stl
+        </div>
+
+        <div class="upload-zone" id="dropZone">
+            <div class="upload-icon">☁️</div>
+            <h2>Glissez votre fichier 3MF ou STL ici</h2>
+            <p style="margin-top: 10px; color: #666;">ou cliquez pour sélectionner</p>
+            <input type="file" id="fileInput" accept=".3mf,.stl" style="display: none;">
+        </div>
+
+        <button onclick="clearResults()">🔄 Réinitialiser</button>
+
+        <div id="results" class="results">
+            <h3>📊 Résultats</h3>
+            <div id="resultsList"></div>
+        </div>
+
+        <div id="console">
+            <div class="log-line log-info">Console de test initialisée...</div>
+            <div class="log-line log-success">JSZip chargé: <span id="jszipStatus">Vérification...</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Vérifier JSZip
+        document.getElementById('jszipStatus').textContent = typeof JSZip === 'function' ? '✅ OK' : '❌ ERREUR';
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('status');
+        const results = document.getElementById('results');
+        const resultsList = document.getElementById('resultsList');
+        const consoleDiv = document.getElementById('console');
+
+        function log(message, type = 'info') {
+            const logLine = document.createElement('div');
+            logLine.className = `log-line log-${type}`;
+            logLine.textContent = message;
+            consoleDiv.appendChild(logLine);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function setStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        function addResult(label, value) {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            item.innerHTML = `
+                <div class="result-label">${label}</div>
+                <div class="result-value">${value}</div>
+            `;
+            resultsList.appendChild(item);
+        }
+
+        function clearResults() {
+            results.classList.remove('show');
+            resultsList.innerHTML = '';
+            setStatus('ℹ️ Prêt à tester - Glissez un fichier .3mf ou .stl', 'info');
+        }
+
+        // Événements drag & drop
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        async function handleFile(file) {
+            log(`📁 Fichier sélectionné: ${file.name}`, 'info');
+            log(`   Type: ${file.type}`, 'info');
+            log(`   Taille: ${(file.size / 1024).toFixed(2)} KB`, 'info');
+
+            clearResults();
+            setStatus('⏳ Analyse en cours...', 'info');
+
+            const extension = file.name.split('.').pop().toLowerCase();
+
+            if (extension === '3mf') {
+                await handle3MF(file);
+            } else if (extension === 'stl') {
+                await handleSTL(file);
+            } else {
+                setStatus('❌ Format non supporté', 'error');
+                log('❌ Extension non reconnue: ' + extension, 'error');
+            }
+        }
+
+        async function handle3MF(file) {
+            try {
+                log('📦 Fichier 3MF détecté - Extraction des métadonnées...', 'info');
+                
+                if (typeof JSZip !== 'function') {
+                    throw new Error('JSZip n\'est pas chargé !');
+                }
+
+                log('🔓 Décompression du fichier 3MF...', 'info');
+                const zip = await JSZip.loadAsync(file);
+                log(`✅ Fichier ZIP chargé, fichiers trouvés: ${Object.keys(zip.files).length}`, 'success');
+                
+                // Lister tous les fichiers
+                log('📂 Contenu du fichier 3MF:', 'data');
+                Object.keys(zip.files).forEach(name => {
+                    log(`   - ${name}`, 'data');
+                });
+
+                // Chercher le fichier .model
+                const modelFile = zip.file(/3D\/.*\.model$/i)[0] || zip.file(/.*\.model$/i)[0];
+                
+                if (!modelFile) {
+                    throw new Error('Fichier .model non trouvé dans le 3MF');
+                }
+                
+                log(`📄 Lecture du fichier: ${modelFile.name}`, 'info');
+                const modelXML = await modelFile.async('string');
+                
+                // Parser le XML
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(modelXML, 'text/xml');
+                
+                // Extraire les métadonnées
+                const metadata = {};
+                const metadataElements = xmlDoc.getElementsByTagName('metadata');
+                
+                log(`📊 ${metadataElements.length} métadonnées XML trouvées`, 'info');
+                
+                for (let i = 0; i < metadataElements.length; i++) {
+                    const elem = metadataElements[i];
+                    const name = elem.getAttribute('name');
+                    const value = elem.textContent;
+                    if (name) {
+                        metadata[name] = value;
+                        log(`   ${name}: ${value}`, 'data');
+                    }
+                }
+                
+                // Chercher et lire les fichiers JSON de Bambu Studio
+                log('🔍 Recherche des fichiers JSON/config...', 'info');
+                let plateData = null;
+                const plateJsonFile = zip.file(/Metadata\/plate_\d+\.json$/i)[0];
+                
+                if (plateJsonFile) {
+                    log(`📄 Lecture du fichier: ${plateJsonFile.name}`, 'info');
+                    const plateJsonContent = await plateJsonFile.async('string');
+                    try {
+                        plateData = JSON.parse(plateJsonContent);
+                        log('✅ Données de plaque JSON chargées', 'success');
+                        log(`   Clés trouvées: ${Object.keys(plateData).join(', ')}`, 'data');
+                    } catch (e) {
+                        log('⚠️ Erreur lors du parsing du JSON: ' + e.message, 'error');
+                    }
+                } else {
+                    log('ℹ️ Aucun fichier plate_X.json trouvé', 'info');
+                }
+                
+                // Chercher et lire slice_info.config
+                let sliceConfig = {};
+                const sliceInfoFile = zip.file(/Metadata\/slice_info\.config$/i)[0];
+                
+                if (sliceInfoFile) {
+                    log(`📄 Lecture du fichier: ${sliceInfoFile.name}`, 'info');
+                    const sliceInfoContent = await sliceInfoFile.async('string');
+                    
+                    // Parser le fichier config (format key = value)
+                    sliceInfoContent.split('\n').forEach(line => {
+                        const match = line.match(/^(\w+)\s*=\s*(.+)$/);
+                        if (match) {
+                            sliceConfig[match[1]] = match[2].trim();
+                        }
+                    });
+                    log('✅ Configuration de tranchage chargée', 'success');
+                    log(`   Paramètres trouvés: ${Object.keys(sliceConfig).length}`, 'data');
+                } else {
+                    log('ℹ️ Aucun fichier slice_info.config trouvé', 'info');
+                }
+                
+                // Extraire les informations utiles (priorité : JSON > XML > Config > Défaut)
+                log('🎯 Extraction des données d\'impression...', 'info');
+                
+                let printTime = 0;
+                let filamentWeight = 0;
+                let filamentLength = 0;
+                let layerHeight = 0.2;
+                let printSpeed = 50;
+                let infill = 20;
+                
+                // Temps d'impression
+                if (plateData?.prediction) {
+                    printTime = parseFloat(plateData.prediction) || 0;
+                    log('   ⏱️ Temps depuis JSON (prediction): ' + printTime + ' secondes', 'success');
+                } else if (plateData?.print_time) {
+                    // Format possible: "5h 23m" ou nombre de secondes
+                    const timeStr = String(plateData.print_time);
+                    const hourMatch = timeStr.match(/(\d+)h/);
+                    const minMatch = timeStr.match(/(\d+)m/);
+                    if (hourMatch || minMatch) {
+                        const hours = hourMatch ? parseInt(hourMatch[1]) : 0;
+                        const minutes = minMatch ? parseInt(minMatch[1]) : 0;
+                        printTime = hours * 3600 + minutes * 60;
+                    } else {
+                        printTime = parseFloat(timeStr) || 0;
+                    }
+                    log('   ⏱️ Temps depuis JSON (print_time): ' + printTime + ' secondes', 'success');
+                } else {
+                    printTime = parseFloat(metadata['print_time'] || metadata['time'] || metadata['slic3r:print_time'] || 0);
+                    if (printTime > 0) log('   ⏱️ Temps depuis XML: ' + printTime + ' secondes', 'success');
+                    else log('   ⚠️ Temps d\'impression non trouvé', 'error');
+                }
+                
+                // Poids du filament
+                if (plateData?.filament_used_g) {
+                    filamentWeight = parseFloat(plateData.filament_used_g) || 0;
+                    log('   ⚖️ Poids depuis JSON (filament_used_g): ' + filamentWeight + ' g', 'success');
+                } else if (plateData?.weight) {
+                    filamentWeight = parseFloat(plateData.weight) || 0;
+                    log('   ⚖️ Poids depuis JSON (weight): ' + filamentWeight + ' g', 'success');
+                } else {
+                    filamentWeight = parseFloat(metadata['filament_weight'] || metadata['slic3r:filament_used_g'] || 0);
+                    if (filamentWeight > 0) log('   ⚖️ Poids depuis XML: ' + filamentWeight + ' g', 'success');
+                    else log('   ⚠️ Poids de filament non trouvé', 'error');
+                }
+                
+                // Longueur du filament
+                if (plateData?.filament_used_mm) {
+                    filamentLength = parseFloat(plateData.filament_used_mm) || 0;
+                    log('   📏 Longueur depuis JSON: ' + filamentLength + ' mm', 'success');
+                } else {
+                    filamentLength = parseFloat(metadata['filament_length'] || metadata['slic3r:filament_used_mm'] || 0);
+                    if (filamentLength > 0) log('   📏 Longueur depuis XML: ' + filamentLength + ' mm', 'success');
+                    else log('   ⚠️ Longueur de filament non trouvée', 'error');
+                }
+                
+                // Hauteur de couche
+                if (sliceConfig.layer_height) {
+                    layerHeight = parseFloat(sliceConfig.layer_height) || 0.2;
+                    log('   📐 Hauteur depuis config: ' + layerHeight + ' mm', 'success');
+                } else if (plateData?.layer_height) {
+                    layerHeight = parseFloat(plateData.layer_height) || 0.2;
+                    log('   📐 Hauteur depuis JSON: ' + layerHeight + ' mm', 'success');
+                } else {
+                    layerHeight = parseFloat(metadata['layer_height'] || metadata['slic3r:layer_height'] || 0.2);
+                    log('   📐 Hauteur de couche (défaut): ' + layerHeight + ' mm', 'info');
+                }
+                
+                // Vitesse d'impression
+                if (sliceConfig.print_speed) {
+                    printSpeed = parseFloat(sliceConfig.print_speed) || 50;
+                    log('   🏃 Vitesse depuis config: ' + printSpeed + ' mm/s', 'success');
+                } else if (sliceConfig.default_speed) {
+                    printSpeed = parseFloat(sliceConfig.default_speed) || 50;
+                    log('   🏃 Vitesse depuis config (default): ' + printSpeed + ' mm/s', 'success');
+                } else {
+                    printSpeed = parseFloat(metadata['print_speed'] || metadata['slic3r:perimeter_speed'] || 50);
+                    log('   🏃 Vitesse d\'impression (défaut): ' + printSpeed + ' mm/s', 'info');
+                }
+                
+                // Taux de remplissage
+                if (sliceConfig.sparse_infill_density) {
+                    // Format possible: "20%" ou "0.2"
+                    const infillStr = String(sliceConfig.sparse_infill_density).replace('%', '');
+                    infill = parseFloat(infillStr) || 20;
+                    if (infill <= 1) infill *= 100; // Convertir 0.2 en 20
+                    log('   📊 Remplissage depuis config: ' + infill + ' %', 'success');
+                } else if (plateData?.infill_density) {
+                    const infillStr = String(plateData.infill_density).replace('%', '');
+                    infill = parseFloat(infillStr) || 20;
+                    if (infill <= 1) infill *= 100;
+                    log('   📊 Remplissage depuis JSON: ' + infill + ' %', 'success');
+                } else {
+                    infill = parseFloat(metadata['fill_density'] || metadata['slic3r:fill_density'] || 20);
+                    log('   📊 Taux de remplissage (défaut): ' + infill + ' %', 'info');
+                }
+                
+                // Résumé final
+                log('📋 Résumé des données extraites:', 'success');
+                log(`   ⏱️ Temps: ${printTime} secondes (${Math.round(printTime/60)} minutes)`, 'success');
+                log(`   ⚖️ Poids filament: ${filamentWeight} g`, 'success');
+                log(`   📏 Longueur filament: ${filamentLength} mm`, 'success');
+                log(`   📐 Hauteur couche: ${layerHeight} mm`, 'success');
+                log(`   🏃 Vitesse: ${printSpeed} mm/s`, 'success');
+                log(`   📊 Remplissage: ${infill} %`, 'success');
+
+                // Afficher les résultats
+                results.classList.add('show');
+                addResult('📁 Nom du fichier', file.name);
+                
+                if (printTime > 0) {
+                    addResult('⏱️ Temps d\'impression', `${Math.floor(printTime/3600)}h ${Math.floor((printTime%3600)/60)}min`);
+                } else {
+                    addResult('⏱️ Temps d\'impression', 'Non disponible');
+                }
+                
+                if (filamentWeight > 0) {
+                    addResult('⚖️ Poids de filament', `${filamentWeight.toFixed(2)} g`);
+                } else {
+                    addResult('⚖️ Poids de filament', 'Non disponible');
+                }
+                
+                if (filamentLength > 0) {
+                    addResult('📏 Longueur de filament', `${(filamentLength/1000).toFixed(2)} m`);
+                } else {
+                    addResult('📏 Longueur de filament', 'Non disponible');
+                }
+                
+                addResult('📐 Hauteur de couche', `${layerHeight} mm`);
+                addResult('🏃 Vitesse d\'impression', `${printSpeed} mm/s`);
+                addResult('📊 Taux de remplissage', `${infill} %`);
+
+                setStatus('✅ Extraction 3MF réussie !', 'success');
+                log('✅ Extraction 3MF terminée avec succès !', 'success');
+
+            } catch (error) {
+                setStatus('❌ Erreur lors de l\'analyse du 3MF', 'error');
+                log('❌ ERREUR: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        async function handleSTL(file) {
+            try {
+                log('📦 Fichier STL détecté - Analyse de la géométrie...', 'info');
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        const uint8 = new Uint8Array(arrayBuffer);
+                        
+                        // Détection ASCII vs Binaire
+                        let isBinary = true;
+                        const header = String.fromCharCode.apply(null, uint8.slice(0, 5));
+                        
+                        if (header === 'solid') {
+                            isBinary = false;
+                            log('📄 Format détecté: STL ASCII', 'info');
+                        } else {
+                            log('📄 Format détecté: STL Binaire', 'info');
+                        }
+                        
+                        let volume = 0;
+                        
+                        if (isBinary && arrayBuffer.byteLength > 84) {
+                            const view = new DataView(arrayBuffer);
+                            const numTriangles = view.getUint32(80, true);
+                            log(`🔢 Nombre de triangles: ${numTriangles}`, 'info');
+                            
+                            for (let i = 0; i < numTriangles; i++) {
+                                const offset = 84 + i * 50 + 12;
+                                const v1x = view.getFloat32(offset, true);
+                                const v1y = view.getFloat32(offset + 4, true);
+                                const v1z = view.getFloat32(offset + 8, true);
+                                const v2x = view.getFloat32(offset + 12, true);
+                                const v2y = view.getFloat32(offset + 16, true);
+                                const v2z = view.getFloat32(offset + 20, true);
+                                const v3x = view.getFloat32(offset + 24, true);
+                                const v3y = view.getFloat32(offset + 28, true);
+                                const v3z = view.getFloat32(offset + 32, true);
+                                
+                                const cross_x = (v2y * v3z) - (v2z * v3y);
+                                const cross_y = (v2z * v3x) - (v2x * v3z);
+                                const cross_z = (v2x * v3y) - (v2y * v3x);
+                                const dot = v1x * cross_x + v1y * cross_y + v1z * cross_z;
+                                
+                                volume += dot / 6;
+                            }
+                            
+                            volume = Math.abs(volume) / 1000; // Conversion en cm³
+                        }
+                        
+                        const density = 1.24; // PLA par défaut
+                        const weight = volume * density;
+                        
+                        log('🎯 Analyse terminée:', 'success');
+                        log(`   📦 Volume: ${volume.toFixed(2)} cm³`, 'success');
+                        log(`   ⚖️ Poids estimé: ${weight.toFixed(2)} g (PLA 1.24 g/cm³)`, 'success');
+
+                        // Afficher les résultats
+                        results.classList.add('show');
+                        addResult('📁 Nom du fichier', file.name);
+                        addResult('📦 Volume', `${volume.toFixed(2)} cm³`);
+                        addResult('⚖️ Poids estimé (PLA)', `${weight.toFixed(2)} g`);
+                        addResult('ℹ️ Note', 'Utilisez un fichier 3MF pour plus de précision');
+
+                        setStatus('✅ Analyse STL réussie !', 'success');
+                        log('✅ Analyse STL terminée avec succès !', 'success');
+                        
+                    } catch (error) {
+                        setStatus('❌ Erreur lors de l\'analyse du STL', 'error');
+                        log('❌ ERREUR: ' + error.message, 'error');
+                    }
+                };
+                
+                reader.onerror = () => {
+                    setStatus('❌ Erreur de lecture du fichier', 'error');
+                    log('❌ Erreur lors de la lecture du fichier', 'error');
+                };
+                
+                reader.readAsArrayBuffer(file);
+                
+            } catch (error) {
+                setStatus('❌ Erreur lors de l\'analyse du STL', 'error');
+                log('❌ ERREUR: ' + error.message, 'error');
+            }
+        }
+
+        log('✅ Page de test chargée et prête !', 'success');
+    </script>
+</body>
+</html>

@@ -2,7 +2,23 @@
 
 Un outil web complet et intuitif pour calculer précisément le coût de vos impressions 3D, incluant tous les paramètres importants : filament, électricité, amortissement, maintenance et marge bénéficiaire.
 
-**🔥 Version 3.3.0** - Support Complet des Fichiers 3MF avec Extraction des Métadonnées 🎉
+**🔥 Version 3.4.0** - Extraction Complète depuis JSON/Config 🎉
+
+## 🧪 Test Rapide (Nouveau !)
+
+**Testez immédiatement sans déploiement** :
+```bash
+# Ouvrez simplement test-3mf-simple.html dans un navigateur
+```
+
+✅ **Console de debug intégrée**  
+✅ **Interface visuelle complète**  
+✅ **Support STL et 3MF**  
+✅ **Voir toutes les métadonnées extraites**
+
+📖 **Mode d'emploi** : [TEST-3MF-MODE-EMPLOI.md](TEST-3MF-MODE-EMPLOI.md)
+
+---
 
 ## 🚀 Déploiement Rapide
 
@@ -15,11 +31,24 @@ Un outil web complet et intuitif pour calculer précisément le coût de vos imp
 Consultez [DEPLOIEMENT-RAPIDE.md](DEPLOIEMENT-RAPIDE.md) pour un guide en 2 minutes !
 
 ### Tester automatiquement
-Ouvrez `test-auto.html` ou `test-diagnostic.html` dans votre navigateur pour vérifier que tout fonctionne.
+- **test-3mf-simple.html** : Page de test autonome avec console intégrée (recommandé)
+- **test-auto.html** : Tests automatiques complets
+- **test-diagnostic.html** : Diagnostic détaillé du système
 
 ## 🎯 Fonctionnalités actuellement complétées
 
-### ✨ NOUVEAU - Estimation du Temps d'Impression (v3.1.0)
+### ✨ NOUVEAU - Extraction Complète 3MF (v3.4.0) 🎉
+- **📦 3 sources de données** : Extraction depuis JSON, Config ET XML
+- **🎯 Ordre de priorité intelligent** : JSON → Config → XML → Défaut
+- **✅ Fichiers MakerWorld** : Support complet des fichiers téléchargés
+- **⏱️ Temps exact** : Extraction depuis `plate_X.json` (prediction ou print_time)
+- **⚖️ Poids exact** : Extraction depuis `filament_used_g` ou `weight`
+- **📏 Longueur exacte** : Extraction depuis `filament_used_mm`
+- **⚙️ Paramètres complets** : Extraction depuis `slice_info.config`
+- **🔍 Logs détaillés** : Voir exactement d'où viennent les données
+- **📖 Documentation** : [EXTRACTION-JSON-CONFIG.md](EXTRACTION-JSON-CONFIG.md)
+
+### ✨ Estimation du Temps d'Impression (v3.1.0)
 - **⏱️ Calcul automatique du temps** : Estimation du temps d'impression depuis le fichier STL
 - **⚙️ Paramètres personnalisables** : Hauteur de couche, vitesse, remplissage, supports
 - **📊 Mise à jour en temps réel** : Modifiez les paramètres et le temps se recalcule instantanément
@@ -34,10 +63,13 @@ Ouvrez `test-auto.html` ou `test-diagnostic.html` dans votre navigateur pour vé
 - **Confort visuel** : Réduit la fatigue oculaire lors d'utilisation prolongée
 - **✅ Fonctionne en Docker** : Script inline pour chargement immédiat
 
-### ✅ Import STL / 3MF (v3.3.0 - Support 3MF Complet) 🎉
+### ✅ Import STL / 3MF (v3.4.0 - Extraction Complète) 🎉
 - **Upload de fichiers** : Glisser-déposer ou sélection de fichier STL ou 3MF
 - **STL complet** : Analyse automatique du volume et estimation du poids
-- **✨ 3MF complet** : Extraction automatique de toutes les métadonnées !
+- **✨ 3MF ultra-complet** : Extraction depuis 3 sources !
+  - 📦 **JSON** : plate_X.json (temps, poids, longueur exacts)
+  - ⚙️ **Config** : slice_info.config (paramètres de tranchage)
+  - 📄 **XML** : 3dmodel.model (métadonnées standard)
   - ⏱️ Temps d'impression réel (depuis le slicer)
   - ⚖️ Poids de filament exact
   - 📏 Longueur de filament
@@ -47,8 +79,9 @@ Ouvrez `test-auto.html` ou `test-diagnostic.html` dans votre navigateur pour vé
 - **Remplissage automatique** : Tous les champs sont pré-remplis avec les valeurs du slicer
 - **Support binaire et ASCII** : Compatible avec les deux formats STL
 - **Compatibilité slicers** : PrusaSlicer, Bambu Studio, Cura, Simplify3D
+- **✅ Fichiers MakerWorld** : Extraction complète même sans tranchage local
 - **✅ Fonctionne en Docker** : JSZip intégré via CDN
-- **📖 Documentation** : [SUPPORT-3MF-COMPLET.md](SUPPORT-3MF-COMPLET.md)
+- **📖 Documentation** : [SUPPORT-3MF-COMPLET.md](SUPPORT-3MF-COMPLET.md) et [EXTRACTION-JSON-CONFIG.md](EXTRACTION-JSON-CONFIG.md)
 
 ### ✅ Comparaison de Matériaux
 - **Tableau comparatif** : Comparez plusieurs matériaux côte à côte
@@ -289,18 +322,40 @@ Consultez les guides détaillés :
 - **🔧 Correctif Docker v3.0.1** : [CORRECTIF-DOCKER.md](CORRECTIF-DOCKER.md)
 
 ### Tests
-- **Test automatique** : Ouvrez `test-auto.html`
-- **Test manuel** : Ouvrez `test-diagnostic.html`
+- **🧪 Test simple (recommandé)** : Ouvrez `test-3mf-simple.html` - Console intégrée, interface visuelle
+- **🤖 Test automatique** : Ouvrez `test-auto.html` - 8 tests automatiques
+- **🔧 Test diagnostic** : Ouvrez `test-diagnostic.html` - Tests manuels détaillés
 
 **Important** : Après un déploiement Docker, pensez à vider le cache de votre navigateur !
 
 ---
 
 **Dernière mise à jour** : 2026-01-14  
-**Version** : 3.3.0  
+**Version** : 3.4.0  
 **Licence** : MIT
 
 ## 🎉 Changelog
+
+### v3.4.0 (2026-01-14) - Extraction Complète JSON/Config 🎯
+- ✨ **3 sources de données** : Extraction depuis JSON, Config ET XML
+- 📦 **Fichier JSON** : Lecture de `Metadata/plate_X.json` pour temps/poids/longueur exacts
+- ⚙️ **Fichier Config** : Lecture de `Metadata/slice_info.config` pour paramètres de tranchage
+- 🎯 **Ordre de priorité** : JSON (priorité haute) → Config → XML → Défaut
+- ✅ **Fichiers MakerWorld** : Support complet des fichiers téléchargés (avec métadonnées)
+- 🔍 **Logs améliorés** : Affiche exactement d'où viennent les données
+- 📊 **Formats multiples** : Support "5h 23m", secondes, pourcentages, décimaux
+- 🎉 **Résultat** : Extraction maximale même sans tranchage local !
+- 📖 **Documentation** : Guide complet dans [EXTRACTION-JSON-CONFIG.md](EXTRACTION-JSON-CONFIG.md)
+
+### v3.3.1 (2026-01-14) - Fichier de Test Simple + Favicon 🧪
+- ✨ **Nouveau fichier de test** : `test-3mf-simple.html` - Page autonome pour tester sans déploiement
+- 🎨 **Console intégrée** : Voir tous les logs directement dans la page
+- 📊 **Interface visuelle** : Résultats affichés avec mise en page claire
+- 🧪 **Test STL et 3MF** : Support des deux formats dans une seule page
+- 🎯 **Debug simplifié** : Diagnostic complet sans ouvrir F12
+- 🖼️ **Favicon ajouté** : Plus d'erreur 404 dans la console
+- 📖 **Documentation** : Guide détaillé dans [TEST-3MF-MODE-EMPLOI.md](TEST-3MF-MODE-EMPLOI.md)
+- 📋 **Résumé complet** : [RESUME-V3.3.1.md](RESUME-V3.3.1.md)
 
 ### v3.3.0 (2026-01-14) - Support Complet des Fichiers 3MF 🎉
 - ✨ **Extraction des métadonnées 3MF** : Lecture complète des fichiers 3MF

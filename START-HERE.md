@@ -1,20 +1,32 @@
-# 🚀 ACTION IMMÉDIATE - 3 Commandes
+# 🚀 TEST RAPIDE - 1 Clic
 
-## 🎉 Nouvelle Version v3.3.0
+## 🧪 **NOUVEAU : Test Sans Déploiement**
 
-**Support COMPLET des fichiers 3MF** 🎉
-- Extraction automatique du temps d'impression réel
-- Extraction du poids de filament exact
-- Extraction des paramètres d'impression (vitesse, hauteur, remplissage)
-- Remplissage automatique de tous les champs
-- **Calcul de coût 100% précis !**
+**Ouvrez directement** : `test-3mf-simple.html`
+
+✅ Testez le support 3MF **immédiatement**  
+✅ Glissez un fichier 3MF ou STL  
+✅ Console de debug intégrée  
+✅ Voir toutes les métadonnées extraites  
+✅ **Aucun déploiement nécessaire !**
+
+---
+
+## 🎉 Nouvelle Version v3.4.0
+
+**Extraction Complète depuis JSON et Config** 🎉
+- ✅ Support complet des fichiers MakerWorld
+- ✅ Extraction depuis 3 sources (JSON, Config, XML)
+- ✅ Temps, poids et longueur exacts même sans tranchage local
+- ✅ Logs détaillés pour voir d'où viennent les données
+- ✅ **Calcul de coût 100% précis pour tous les fichiers 3MF !**
 
 ## Déployer Maintenant (5 minutes)
 
 ### 1. Push GitHub
 ```bash
 git add .
-git commit -m "Feat: Support complet 3MF avec extraction métadonnées (v3.3.0)"
+git commit -m "Feat: Extraction complète JSON/Config + MakerWorld (v3.4.0)"
 git push origin main
 ```
 
@@ -40,18 +52,22 @@ git push origin main
 
 ## Console (F12)
 
-Ouvrez la console pour voir les logs :
+Ouvrez la console pour voir les logs détaillés :
 ```
-📦 Fichier 3MF détecté - Extraction des métadonnées...
-🔓 Décompression du fichier 3MF...
-✅ Fichier ZIP chargé
-📊 Métadonnées extraites
-  ⏱️ Temps: 18450 secondes ( 308 minutes)
-  ⚖️ Poids filament: 60.5 g
+🔍 Recherche des fichiers JSON/config...
+📄 Lecture du fichier: Metadata/plate_1.json
+✅ Données de plaque JSON chargées
+📄 Lecture du fichier: Metadata/slice_info.config
+✅ Configuration de tranchage chargée
+🎯 Extraction des données d'impression...
+  ⏱️ Temps depuis JSON (prediction): 19350 secondes
+  ⚖️ Poids depuis JSON (filament_used_g): 142.5 g
+  📏 Longueur depuis JSON: 47500 mm
 ✅ Extraction 3MF terminée avec succès
 ```
 
 ---
 
-**Version** : 3.3.0 🎉  
-**Type** : Support 3MF complet avec JSZip
+**Version** : 3.4.0 🎉  
+**Type** : Extraction complète JSON/Config + Support MakerWorld  
+**Nouveau** : `EXTRACTION-JSON-CONFIG.md` et `RESUME-V3.4.0.md`
