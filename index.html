@@ -9,6 +9,156 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Script inline pour initialiser les fonctions critiques -->
+    <script>
+        // Fonction toggle theme - définie immédiatement
+        window.toggleTheme = function() {
+            try {
+                const html = document.documentElement;
+                const currentTheme = html.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                html.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                
+                // Mise à jour de l'icône et du texte
+                const icon = document.getElementById('themeIcon');
+                const text = document.getElementById('themeText');
+                if (icon && text) {
+                    if (newTheme === 'dark') {
+                        icon.className = 'fas fa-sun';
+                        text.textContent = 'Mode Clair';
+                    } else {
+                        icon.className = 'fas fa-moon';
+                        text.textContent = 'Mode Sombre';
+                    }
+                }
+            } catch (e) {
+                console.error('Erreur toggleTheme:', e);
+            }
+        };
+
+        // Fonction handleSTLUpload - définie immédiatement
+        window.handleSTLUpload = async function(event) {
+            try {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        const view = new DataView(arrayBuffer);
+                        
+                        let isBinary = true;
+                        if (arrayBuffer.byteLength > 5) {
+                            const header = String.fromCharCode.apply(null, new Uint8Array(arrayBuffer.slice(0, 5)));
+                            if (header === 'solid') {
+                                isBinary = false;
+                            }
+                        }
+                        
+                        let volume = 0;
+                        if (isBinary && arrayBuffer.byteLength > 84) {
+                            const numTriangles = view.getUint32(80, true);
+                            for (let i = 0; i < numTriangles; i++) {
+                                const offset = 84 + i * 50 + 12;
+                                if (offset + 36 <= arrayBuffer.byteLength) {
+                                    const v1x = view.getFloat32(offset, true);
+                                    const v1y = view.getFloat32(offset + 4, true);
+                                    const v1z = view.getFloat32(offset + 8, true);
+                                    const v2x = view.getFloat32(offset + 12, true);
+                                    const v2y = view.getFloat32(offset + 16, true);
+                                    const v2z = view.getFloat32(offset + 20, true);
+                                    const v3x = view.getFloat32(offset + 24, true);
+                                    const v3y = view.getFloat32(offset + 28, true);
+                                    const v3z = view.getFloat32(offset + 32, true);
+                                    
+                                    const crossX = v2y * v3z - v2z * v3y;
+                                    const crossY = v2z * v3x - v2x * v3z;
+                                    const crossZ = v2x * v3y - v2y * v3x;
+                                    const dot = v1x * crossX + v1y * crossY + v1z * crossZ;
+                                    volume += dot / 6;
+                                }
+                            }
+                        }
+                        
+                        volume = Math.abs(volume) / 1000;
+                        
+                        const densityEl = document.getElementById('filamentDensity');
+                        const density = densityEl ? parseFloat(densityEl.value) || 1.24 : 1.24;
+                        const weight = volume * density;
+                        
+                        // Mise à jour de l'interface
+                        const stlInfo = document.getElementById('stlInfo');
+                        if (stlInfo) {
+                            stlInfo.classList.remove('hidden');
+                            const fileNameEl = document.getElementById('stlFileName');
+                            const volumeEl = document.getElementById('stlVolume');
+                            const weightEl = document.getElementById('stlWeight');
+                            
+                            if (fileNameEl) fileNameEl.textContent = file.name;
+                            if (volumeEl) volumeEl.textContent = volume.toFixed(2);
+                            if (weightEl) weightEl.textContent = weight.toFixed(2);
+                            
+                            const weightInput = document.getElementById('filamentWeight');
+                            if (weightInput) {
+                                weightInput.value = weight.toFixed(2);
+                                // Déclencher le recalcul si la fonction existe
+                                if (typeof window.calculateCost === 'function') {
+                                    window.calculateCost();
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Erreur analyse STL:', err);
+                        alert('Erreur lors de l\'analyse du fichier STL: ' + err.message);
+                    }
+                };
+                reader.onerror = function() {
+                    alert('Erreur lors de la lecture du fichier');
+                };
+                reader.readAsArrayBuffer(file);
+            } catch (e) {
+                console.error('Erreur handleSTLUpload:', e);
+                alert('Erreur: ' + e.message);
+            }
+        };
+
+        // Fonction clearSTL - définie immédiatement
+        window.clearSTL = function() {
+            const stlInfo = document.getElementById('stlInfo');
+            const stlInput = document.getElementById('stlFileInput');
+            if (stlInfo) stlInfo.classList.add('hidden');
+            if (stlInput) stlInput.value = '';
+        };
+
+        // Charger le thème sauvegardé au chargement de la page
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+
+        // Mettre à jour l'icône du thème quand le DOM est chargé
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            if (icon && text) {
+                if (currentTheme === 'dark') {
+                    icon.className = 'fas fa-sun';
+                    text.textContent = 'Mode Clair';
+                } else {
+                    icon.className = 'fas fa-moon';
+                    text.textContent = 'Mode Sombre';
+                }
+            }
+        });
+    </script>
+    
     <style>
         :root {
             --bg-gradient-start: #667eea;

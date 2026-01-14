@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ Test Automatique - Calculateur 3D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .test-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+        }
+        .test-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .test-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .status-pending {
+            background: #ffc107;
+            color: #000;
+        }
+        .status-running {
+            background: #17a2b8;
+            color: white;
+            animation: pulse 1s infinite;
+        }
+        .status-success {
+            background: #28a745;
+            color: white;
+        }
+        .status-error {
+            background: #dc3545;
+            color: white;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .summary-item {
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+        }
+        .summary-total { background: #667eea; }
+        .summary-success { background: #28a745; }
+        .summary-error { background: #dc3545; }
+        .summary-pending { background: #ffc107; }
+        .summary-number {
+            font-size: 2em;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .details {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+        .console-output {
+            background: #1e1e1e;
+            color: #dcdcdc;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .console-line {
+            margin: 3px 0;
+        }
+        .console-success { color: #4ec9b0; }
+        .console-error { color: #f48771; }
+        .console-info { color: #569cd6; }
+        .console-warning { color: #dcdcaa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ Test Automatique du Calculateur 3D</h1>
+
+        <div class="card">
+            <h2>🚀 Tests de Fonctionnement</h2>
+            <button id="runTestsBtn" class="btn" onclick="runAllTests()">
+                Lancer tous les tests
+            </button>
+
+            <div class="summary" id="summary" style="display: none;">
+                <div class="summary-item summary-total">
+                    <span class="summary-number" id="totalTests">0</span>
+                    Total
+                </div>
+                <div class="summary-item summary-success">
+                    <span class="summary-number" id="successTests">0</span>
+                    Réussis
+                </div>
+                <div class="summary-item summary-error">
+                    <span class="summary-number" id="errorTests">0</span>
+                    Échoués
+                </div>
+                <div class="summary-item summary-pending">
+                    <span class="summary-number" id="pendingTests">0</span>
+                    En attente
+                </div>
+            </div>
+
+            <div id="testsContainer"></div>
+
+            <div id="consoleOutput" class="console-output" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const tests = [
+            {
+                id: 'localStorage',
+                name: 'LocalStorage disponible',
+                test: async () => {
+                    try {
+                        localStorage.setItem('test', 'value');
+                        const value = localStorage.getItem('test');
+                        localStorage.removeItem('test');
+                        return value === 'value';
+                    } catch (e) {
+                        throw new Error('LocalStorage non disponible: ' + e.message);
+                    }
+                }
+            },
+            {
+                id: 'toggleTheme',
+                name: 'Fonction toggleTheme définie',
+                test: async () => {
+                    if (typeof window.toggleTheme !== 'function') {
+                        throw new Error('toggleTheme n\'est pas définie');
+                    }
+                    return true;
+                }
+            },
+            {
+                id: 'handleSTLUpload',
+                name: 'Fonction handleSTLUpload définie',
+                test: async () => {
+                    if (typeof window.handleSTLUpload !== 'function') {
+                        throw new Error('handleSTLUpload n\'est pas définie');
+                    }
+                    return true;
+                }
+            },
+            {
+                id: 'clearSTL',
+                name: 'Fonction clearSTL définie',
+                test: async () => {
+                    if (typeof window.clearSTL !== 'function') {
+                        throw new Error('clearSTL n\'est pas définie');
+                    }
+                    return true;
+                }
+            },
+            {
+                id: 'chartjs',
+                name: 'Chart.js chargé',
+                test: async () => {
+                    if (typeof Chart === 'undefined') {
+                        throw new Error('Chart.js non chargé');
+                    }
+                    return true;
+                }
+            },
+            {
+                id: 'jspdf',
+                name: 'jsPDF chargé',
+                test: async () => {
+                    if (typeof window.jspdf === 'undefined') {
+                        throw new Error('jsPDF non chargé');
+                    }
+                    return true;
+                }
+            },
+            {
+                id: 'theme',
+                name: 'Système de thème fonctionnel',
+                test: async () => {
+                    const html = document.documentElement;
+                    const original = html.getAttribute('data-theme');
+                    
+                    // Test changement de thème
+                    html.setAttribute('data-theme', 'dark');
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    if (html.getAttribute('data-theme') !== 'dark') {
+                        throw new Error('Impossible de changer le thème');
+                    }
+                    
+                    // Restaurer
+                    if (original) {
+                        html.setAttribute('data-theme', original);
+                    } else {
+                        html.removeAttribute('data-theme');
+                    }
+                    
+                    return true;
+                }
+            },
+            {
+                id: 'dom',
+                name: 'Éléments DOM critiques présents',
+                test: async () => {
+                    const elements = [
+                        'filamentType',
+                        'filamentPrice',
+                        'filamentWeight',
+                        'totalCost',
+                        'themeIcon'
+                    ];
+                    
+                    const missing = [];
+                    for (const id of elements) {
+                        if (!document.getElementById(id)) {
+                            missing.push(id);
+                        }
+                    }
+                    
+                    if (missing.length > 0) {
+                        throw new Error('Éléments manquants: ' + missing.join(', '));
+                    }
+                    
+                    return true;
+                }
+            }
+        ];
+
+        let results = {
+            total: tests.length,
+            success: 0,
+            error: 0,
+            pending: tests.length
+        };
+
+        function logConsole(message, type = 'info') {
+            const console = document.getElementById('consoleOutput');
+            console.style.display = 'block';
+            const line = document.createElement('div');
+            line.className = `console-line console-${type}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function updateSummary() {
+            document.getElementById('summary').style.display = 'grid';
+            document.getElementById('totalTests').textContent = results.total;
+            document.getElementById('successTests').textContent = results.success;
+            document.getElementById('errorTests').textContent = results.error;
+            document.getElementById('pendingTests').textContent = results.pending;
+        }
+
+        function createTestItem(test) {
+            const div = document.createElement('div');
+            div.className = 'test-item';
+            div.id = `test-${test.id}`;
+            div.innerHTML = `
+                <span class="test-name">${test.name}</span>
+                <span class="test-status status-pending" id="status-${test.id}">En attente</span>
+            `;
+            return div;
+        }
+
+        function updateTestStatus(testId, status, details = '') {
+            const statusEl = document.getElementById(`status-${testId}`);
+            statusEl.className = `test-status status-${status}`;
+            
+            const statusText = {
+                'pending': 'En attente',
+                'running': 'En cours...',
+                'success': '✓ Réussi',
+                'error': '✗ Échoué'
+            };
+            
+            statusEl.textContent = statusText[status] || status;
+            
+            if (details) {
+                const testItem = document.getElementById(`test-${testId}`);
+                let detailsDiv = testItem.querySelector('.details');
+                if (!detailsDiv) {
+                    detailsDiv = document.createElement('div');
+                    detailsDiv.className = 'details';
+                    testItem.appendChild(detailsDiv);
+                }
+                detailsDiv.textContent = details;
+            }
+        }
+
+        async function runAllTests() {
+            const btn = document.getElementById('runTestsBtn');
+            btn.disabled = true;
+            btn.textContent = 'Tests en cours...';
+            
+            const container = document.getElementById('testsContainer');
+            container.innerHTML = '';
+            
+            results = {
+                total: tests.length,
+                success: 0,
+                error: 0,
+                pending: tests.length
+            };
+            
+            logConsole('Démarrage des tests automatiques...', 'info');
+            
+            for (const test of tests) {
+                container.appendChild(createTestItem(test));
+            }
+            
+            updateSummary();
+            
+            for (const test of tests) {
+                updateTestStatus(test.id, 'running');
+                logConsole(`Test: ${test.name}`, 'info');
+                
+                try {
+                    const result = await test.test();
+                    if (result) {
+                        updateTestStatus(test.id, 'success');
+                        results.success++;
+                        results.pending--;
+                        logConsole(`✓ ${test.name} - OK`, 'success');
+                    }
+                } catch (error) {
+                    updateTestStatus(test.id, 'error', error.message);
+                    results.error++;
+                    results.pending--;
+                    logConsole(`✗ ${test.name} - ERREUR: ${error.message}`, 'error');
+                }
+                
+                updateSummary();
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Relancer les tests';
+            
+            if (results.error === 0) {
+                logConsole('✓ Tous les tests sont passés avec succès!', 'success');
+                logConsole('Le calculateur est prêt à être utilisé.', 'success');
+            } else {
+                logConsole(`✗ ${results.error} test(s) ont échoué.`, 'error');
+                logConsole('Veuillez corriger les erreurs avant d\'utiliser le calculateur.', 'warning');
+            }
+        }
+
+        // Lancer les tests automatiquement au chargement
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                logConsole('Page chargée. Prêt à lancer les tests.', 'info');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

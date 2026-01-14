@@ -55,7 +55,7 @@ services:
       - "traefik.enable=false"
       - "com.example.description=Calculateur de prix d'impression 3D"
       - "com.example.department=Production"
-      - "com.example.version=3.0.0"
+      - "com.example.version=3.0.1"
 
 networks:
   calculateur-network:

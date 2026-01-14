@@ -2,20 +2,37 @@
 
 Un outil web complet et intuitif pour calculer précisément le coût de vos impressions 3D, incluant tous les paramètres importants : filament, électricité, amortissement, maintenance et marge bénéficiaire.
 
+**🔥 Version 3.0.1** - Correctifs Docker/Portainer (Mode sombre et Import STL)
+
+## 🚀 Déploiement Rapide
+
+### Tester localement
+```bash
+# Ouvrir simplement index.html dans un navigateur
+```
+
+### Déployer sur Docker/Portainer
+Consultez [DEPLOIEMENT-RAPIDE.md](DEPLOIEMENT-RAPIDE.md) pour un guide en 2 minutes !
+
+### Tester automatiquement
+Ouvrez `test-auto.html` ou `test-diagnostic.html` dans votre navigateur pour vérifier que tout fonctionne.
+
 ## 🎯 Fonctionnalités actuellement complétées
 
-### ✅ Mode Sombre
+### ✅ Mode Sombre (v3.0.1 - Corrigé pour Docker)
 - **Toggle mode sombre/clair** : Bouton en haut à droite pour basculer entre les thèmes
 - **Persistance** : Le thème sélectionné est sauvegardé dans le navigateur
 - **Design adapté** : Toute l'interface s'adapte au thème sombre
 - **Confort visuel** : Réduit la fatigue oculaire lors d'utilisation prolongée
+- **✅ Fonctionne en Docker** : Script inline pour chargement immédiat
 
-### ✅ Import STL
+### ✅ Import STL (v3.0.1 - Corrigé pour Docker)
 - **Upload de fichiers** : Glisser-déposer ou sélection de fichier STL
 - **Analyse automatique** : Calcul du volume et estimation du poids
 - **Support binaire et ASCII** : Compatible avec les deux formats STL
 - **Mise à jour automatique** : Le poids estimé est appliqué au formulaire
 - **Affichage des informations** : Nom du fichier, volume (cm³), poids estimé (g)
+- **✅ Fonctionne en Docker** : Analyse STL simplifiée sans dépendance Three.js
 
 ### ✅ Comparaison de Matériaux
 - **Tableau comparatif** : Comparez plusieurs matériaux côte à côte
@@ -87,14 +104,24 @@ Un outil web complet et intuitif pour calculer précisément le coût de vos imp
 
 ## 📋 URIs fonctionnels
 
-### Page principale
+### Pages principales
 - **URI** : `/index.html` ou `/`
-- **Description** : Interface complète du calculateur
-- **Paramètres** : Aucun (tous les paramètres sont saisis via l'interface)
+  - **Description** : Interface complète du calculateur
+  - **Paramètres** : Aucun (tous les paramètres sont saisis via l'interface)
+
+- **URI** : `/test-auto.html`
+  - **Description** : Page de tests automatiques
+  - **Usage** : Vérifie que toutes les fonctions critiques sont disponibles
+  - **Tests** : LocalStorage, toggleTheme, handleSTLUpload, Chart.js, jsPDF, thème, DOM
+
+- **URI** : `/test-diagnostic.html`
+  - **Description** : Page de diagnostic manuel
+  - **Usage** : Tests interactifs pour déboguer des problèmes
 
 ### Fichiers JavaScript
 - **URI** : `/js/calculator.js`
-- **Description** : Logique de calcul, gestion de l'interface, présets, historique et export PDF
+  - **Description** : Logique de calcul, gestion de l'interface, présets, historique et export PDF
+  - **Fonctions exposées globalement** : calculateCost, toggleTheme, handleSTLUpload, clearSTL, exportPDF, loadPreset, etc.
 
 ## 🎨 Technologies utilisées
 
@@ -234,18 +261,38 @@ Prix de vente = Coût total × (1 + Marge bénéficiaire / 100)
 
 ## 🌐 Déploiement
 
-Pour déployer ce projet :
-1. Allez dans l'onglet **Publish**
-2. Cliquez sur le bouton de publication
-3. Votre calculateur sera accessible via l'URL fournie
+### Local
+1. **Ouvrez** `index.html` dans votre navigateur
+2. C'est tout ! Aucune installation requise
+
+### Docker/Portainer
+Consultez les guides détaillés :
+- **🚀 Guide rapide (2 minutes)** : [DEPLOIEMENT-RAPIDE.md](DEPLOIEMENT-RAPIDE.md)
+- **📖 Guide complet Portainer** : [DEPLOIEMENT-PORTAINER.md](DEPLOIEMENT-PORTAINER.md)
+- **🐛 Guide de dépannage** : [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+- **🔧 Correctif Docker v3.0.1** : [CORRECTIF-DOCKER.md](CORRECTIF-DOCKER.md)
+
+### Tests
+- **Test automatique** : Ouvrez `test-auto.html`
+- **Test manuel** : Ouvrez `test-diagnostic.html`
+
+**Important** : Après un déploiement Docker, pensez à vider le cache de votre navigateur !
 
 ---
 
-**Dernière mise à jour** : 2026-01-14
-**Version** : 3.0.0  
+**Dernière mise à jour** : 2026-01-14  
+**Version** : 3.0.1  
 **Licence** : MIT
 
 ## 🎉 Changelog
+
+### v3.0.1 (2026-01-14) - Correctif Docker/Portainer
+- 🐛 **Fix Mode sombre** : Ajout d'un script inline pour chargement immédiat
+- 🐛 **Fix Import STL** : Analyse STL simplifiée sans dépendance Three.js
+- 🐛 **Fix ReferenceError** : toggleTheme et handleSTLUpload maintenant disponibles immédiatement
+- ✨ **Tests automatiques** : Nouvelle page `test-auto.html` pour vérifier le fonctionnement
+- 📝 **Documentation** : Guides de déploiement et dépannage améliorés
+- 🔧 **Docker** : Version mise à jour dans docker-compose.yml
 
 ### v3.0.0 (2026-01-14) - Mise à jour majeure
 - ✨ **Mode sombre** : Toggle pour basculer entre thème clair et sombre
