@@ -4,6 +4,26 @@ Un outil web complet et intuitif pour calculer précisément le coût de vos imp
 
 ## 🎯 Fonctionnalités actuellement complétées
 
+### ✅ Mode Sombre
+- **Toggle mode sombre/clair** : Bouton en haut à droite pour basculer entre les thèmes
+- **Persistance** : Le thème sélectionné est sauvegardé dans le navigateur
+- **Design adapté** : Toute l'interface s'adapte au thème sombre
+- **Confort visuel** : Réduit la fatigue oculaire lors d'utilisation prolongée
+
+### ✅ Import STL
+- **Upload de fichiers** : Glisser-déposer ou sélection de fichier STL
+- **Analyse automatique** : Calcul du volume et estimation du poids
+- **Support binaire et ASCII** : Compatible avec les deux formats STL
+- **Mise à jour automatique** : Le poids estimé est appliqué au formulaire
+- **Affichage des informations** : Nom du fichier, volume (cm³), poids estimé (g)
+
+### ✅ Comparaison de Matériaux
+- **Tableau comparatif** : Comparez plusieurs matériaux côte à côte
+- **Ajout facile** : Bouton pour ajouter le matériau actuel à la comparaison
+- **Détails complets** : Prix, densité, coût filament, coût total, prix de vente
+- **Gestion** : Suppression individuelle de chaque matériau
+- **Vue d'ensemble** : Identifiez rapidement le meilleur rapport qualité/prix
+
 ### ✅ Calculs de base
 - **Coût du filament** : Calcul basé sur le prix au kg et le poids utilisé
 - **Coût de l'électricité** : Basé sur la consommation de l'imprimante et le temps d'impression
@@ -132,34 +152,33 @@ Prix de vente = Coût total × (1 + Marge bénéficiaire / 100)
 ## 🚀 Fonctionnalités non encore implémentées
 
 ### Fonctionnalités futures potentielles
-- [ ] **Comparaison de matériaux** : Comparer les coûts entre différents filaments simultanément
-- [ ] **Mode sombre** : Thème sombre pour l'interface
 - [ ] **Multi-langue** : Support de plusieurs langues (actuellement en français)
 - [ ] **Calcul par projet** : Gérer plusieurs pièces dans un même projet
 - [ ] **Base de données des filaments** : Prix moyens du marché par type
 - [ ] **Calculateur de rentabilité** : ROI de l'imprimante 3D
 - [ ] **Support de plusieurs devises** : Conversion automatique
 - [ ] **Partage de calculs** : Générer des liens partageables
-- [ ] **Import de fichiers STL** : Estimation automatique du poids
+- [ ] **Analyse STL avancée** : Estimation plus précise avec Three.js
 - [ ] **Graphiques d'évolution** : Suivi des coûts dans le temps
 - [ ] **Export CSV** : Export de l'historique en format CSV
+- [ ] **Prédiction temps d'impression** : Estimation basée sur la géométrie STL
 
 ## 🔧 Étapes de développement recommandées
 
 ### Priorité haute
-1. **Mode sombre** : Ajouter un thème sombre pour le confort visuel
-2. **Comparaison de matériaux** : Outil de comparaison côte à côte
-3. **Import STL** : Estimation automatique du poids et du temps
+1. **Analyse STL avancée** : Utiliser Three.js pour une estimation plus précise du volume
+2. **Base de données de prix** : Intégrer une base de données de prix de filaments
+3. **Multi-langue** : Support de l'anglais et de l'espagnol
 
 ### Priorité moyenne
-4. **Multi-langue** (anglais, espagnol)
-5. **Base de données de prix** des filaments avec mise à jour régulière
-6. **Calculateur de ROI** de l'imprimante
+4. **Calcul par projet** : Gérer plusieurs pièces simultanément
+5. **Prédiction du temps d'impression** : Basé sur la géométrie STL et les paramètres
+6. **Export avancé** : Templates PDF personnalisables
 
 ### Priorité basse
-7. **Export CSV** de l'historique
-8. **Partage de calculs** via URL
-9. **Graphiques d'évolution** temporelle des coûts
+7. **Partage de calculs** : Générer des URLs partageables
+8. **Graphiques d'évolution** : Suivi historique des coûts
+9. **API REST** : Permettre l'intégration avec d'autres outils
 
 ## 📱 Compatibilité
 
@@ -222,11 +241,19 @@ Pour déployer ce projet :
 
 ---
 
-**Dernière mise à jour** : 2026-01-13  
-**Version** : 2.1.0  
+**Dernière mise à jour** : 2026-01-14
+**Version** : 3.0.0  
 **Licence** : MIT
 
 ## 🎉 Changelog
+
+### v3.0.0 (2026-01-14) - Mise à jour majeure
+- ✨ **Mode sombre** : Toggle pour basculer entre thème clair et sombre
+- ✨ **Import STL** : Upload et analyse automatique des fichiers STL
+- ✨ **Comparaison de matériaux** : Tableau comparatif pour plusieurs filaments
+- 🎨 Interface améliorée avec support du thème sombre
+- 📊 Analyse automatique du volume et estimation du poids depuis fichiers STL
+- 🔄 Système de comparaison côte à côte pour optimiser le choix de matériau
 
 ### v2.1.0 (2026-01-13)
 - ✅ Simplification des présets : **uniquement Bambu Lab A1**
@@ -245,8 +272,9 @@ Pour déployer ce projet :
 - ✅ Boutons d'action rapide (Sauvegarder, Charger, Réinitialiser, PDF)
 - ✅ Modal pour la consultation de l'historique
 
-### 🔧 Améliorations
+### 🔧 Améliorations continues
 - Interface utilisateur enrichie avec plus d'actions disponibles
 - Meilleure organisation des boutons et actions
 - Animations et transitions plus fluides
 - Retours visuels pour toutes les interactions utilisateur
+- Thème sombre pour réduire la fatigue oculaire

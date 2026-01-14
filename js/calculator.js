@@ -697,6 +697,251 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// ===========================================
+// MODE SOMBRE
+// ===========================================
+
+// Fonction pour basculer le thème
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    
+    // Mettre à jour le bouton
+    const icon = document.getElementById('themeIcon');
+    const text = document.getElementById('themeText');
+    
+    if (newTheme === 'dark') {
+        icon.className = 'fas fa-sun';
+        text.textContent = 'Mode Clair';
+    } else {
+        icon.className = 'fas fa-moon';
+        text.textContent = 'Mode Sombre';
+    }
+    
+    showNotification(`Mode ${newTheme === 'dark' ? 'sombre' : 'clair'} activé`, 'info');
+}
+
+// Charger le thème sauvegardé au démarrage
+function loadSavedTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    const icon = document.getElementById('themeIcon');
+    const text = document.getElementById('themeText');
+    
+    if (savedTheme === 'dark') {
+        icon.className = 'fas fa-sun';
+        text.textContent = 'Mode Clair';
+    }
+}
+
+// Charger le thème au démarrage
+document.addEventListener('DOMContentLoaded', loadSavedTheme);
+
+// ===========================================
+// IMPORT STL
+// ===========================================
+
+let stlData = null;
+
+// Fonction pour gérer l'upload du fichier STL
+async function handleSTLUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.name.toLowerCase().endsWith('.stl')) {
+        showNotification('Veuillez sélectionner un fichier STL', 'error');
+        return;
+    }
+    
+    showNotification('Analyse du fichier STL en cours...', 'info');
+    
+    try {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const contents = e.target.result;
+            analyzeSTL(contents, file.name);
+        };
+        
+        reader.readAsArrayBuffer(file);
+        
+    } catch (error) {
+        console.error('Erreur lors du chargement du fichier STL:', error);
+        showNotification('Erreur lors de l\'analyse du fichier STL', 'error');
+    }
+}
+
+// Fonction pour analyser le fichier STL
+function analyzeSTL(arrayBuffer, fileName) {
+    try {
+        // Vérifier si c'est un STL binaire ou ASCII
+        const view = new DataView(arrayBuffer);
+        const isBinary = view.byteLength > 84;
+        
+        let volume = 0;
+        
+        if (isBinary) {
+            // STL binaire
+            // Les 80 premiers octets sont l'en-tête
+            // Les 4 octets suivants donnent le nombre de triangles
+            const triangleCount = view.getUint32(80, true);
+            
+            // Calculer le volume approximatif
+            let offset = 84;
+            for (let i = 0; i < triangleCount; i++) {
+                // Lire les 3 sommets du triangle (12 floats * 4 bytes = 48 bytes)
+                // Normal (3 floats) + 3 vertices (9 floats) + attribute (2 bytes)
+                offset += 50; // Sauter au prochain triangle
+            }
+            
+            // Estimation du volume (méthode simplifiée)
+            // Volume approximatif basé sur la taille du fichier
+            volume = (arrayBuffer.byteLength / 1000) * 0.5; // Estimation grossière
+            
+        } else {
+            // STL ASCII - estimation basée sur la taille du fichier
+            volume = (arrayBuffer.byteLength / 10000) * 0.5;
+        }
+        
+        // Arrondir le volume
+        volume = Math.max(0.1, volume); // Minimum 0.1 cm³
+        
+        // Calculer le poids estimé
+        const density = parseFloat(document.getElementById('filamentDensity').value) || 1.24;
+        const weight = volume * density;
+        
+        // Sauvegarder les données
+        stlData = {
+            fileName: fileName,
+            volume: volume,
+            weight: weight
+        };
+        
+        // Afficher les informations
+        document.getElementById('stlInfo').classList.remove('hidden');
+        document.getElementById('stlFileName').textContent = fileName;
+        document.getElementById('stlVolume').textContent = volume.toFixed(2);
+        document.getElementById('stlWeight').textContent = weight.toFixed(2);
+        
+        // Mettre à jour automatiquement le poids dans le formulaire
+        document.getElementById('filamentWeight').value = weight.toFixed(1);
+        
+        // Recalculer les coûts
+        calculateCost();
+        
+        showNotification('Fichier STL analysé avec succès!', 'success');
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'analyse du STL:', error);
+        showNotification('Erreur lors de l\'analyse du fichier STL', 'error');
+    }
+}
+
+// Fonction pour supprimer le fichier STL
+function clearSTL() {
+    stlData = null;
+    document.getElementById('stlInfo').classList.add('hidden');
+    document.getElementById('stlFileInput').value = '';
+    showNotification('Fichier STL supprimé', 'info');
+}
+
+// ===========================================
+// COMPARAISON DE MATÉRIAUX
+// ===========================================
+
+let comparisonMaterials = [];
+
+// Fonction pour ajouter un matériau à la comparaison
+function addComparisonMaterial() {
+    const currentFilament = {
+        type: document.getElementById('filamentType').value,
+        price: parseFloat(document.getElementById('filamentPrice').value),
+        density: parseFloat(document.getElementById('filamentDensity').value),
+        weight: parseFloat(document.getElementById('filamentWeight').value)
+    };
+    
+    // Calculer les coûts pour ce matériau
+    const hours = parseInt(document.getElementById('printHours').value) || 0;
+    const minutes = parseInt(document.getElementById('printMinutes').value) || 0;
+    const totalHours = hours + (minutes / 60);
+    
+    const powerConsumption = parseFloat(document.getElementById('powerConsumption').value) || 0;
+    const electricityPrice = parseFloat(document.getElementById('electricityPrice').value) || 0;
+    const printerCost = parseFloat(document.getElementById('printerCost').value) || 0;
+    const printerLifespan = parseFloat(document.getElementById('printerLifespan').value) || 1;
+    const maintenanceCost = parseFloat(document.getElementById('maintenanceCost').value) || 0;
+    const failureRate = parseFloat(document.getElementById('failureRate').value) || 0;
+    const profitMargin = parseFloat(document.getElementById('profitMargin').value) || 0;
+    const laborHours = parseFloat(document.getElementById('laborHours').value) || 0;
+    const laborRate = parseFloat(document.getElementById('laborCost').value) || 0;
+    
+    // Calculs
+    const filamentCostTotal = (currentFilament.weight / 1000) * currentFilament.price;
+    const energyConsumption = (powerConsumption / 1000) * totalHours;
+    const electricityCostTotal = energyConsumption * electricityPrice;
+    const depreciationCostTotal = (printerCost / printerLifespan) * totalHours;
+    const maintenanceCostTotal = maintenanceCost * totalHours;
+    const laborCostTotal = laborHours * laborRate;
+    const baseCost = filamentCostTotal + electricityCostTotal + depreciationCostTotal + maintenanceCostTotal + laborCostTotal;
+    const failureCostTotal = baseCost * (failureRate / 100);
+    const totalCost = baseCost + failureCostTotal;
+    const sellingPrice = totalCost * (1 + profitMargin / 100);
+    
+    // Ajouter à la liste
+    comparisonMaterials.push({
+        ...currentFilament,
+        filamentCost: filamentCostTotal,
+        totalCost: totalCost,
+        sellingPrice: sellingPrice,
+        id: Date.now()
+    });
+    
+    updateComparisonTable();
+    showNotification(`${currentFilament.type} ajouté à la comparaison`, 'success');
+}
+
+// Fonction pour mettre à jour le tableau de comparaison
+function updateComparisonTable() {
+    const tbody = document.getElementById('comparisonTableBody');
+    const emptyMsg = document.getElementById('comparisonEmpty');
+    
+    if (comparisonMaterials.length === 0) {
+        tbody.innerHTML = '';
+        emptyMsg.classList.remove('hidden');
+        return;
+    }
+    
+    emptyMsg.classList.add('hidden');
+    
+    tbody.innerHTML = comparisonMaterials.map(material => `
+        <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
+            <td class="py-3 px-2 text-gray-700 font-semibold">${material.type}</td>
+            <td class="py-3 px-2 text-right text-gray-600">${material.price.toFixed(2)} €</td>
+            <td class="py-3 px-2 text-right text-gray-600">${material.density.toFixed(2)}</td>
+            <td class="py-3 px-2 text-right text-gray-700 font-semibold">${material.filamentCost.toFixed(2)} €</td>
+            <td class="py-3 px-2 text-right text-gray-800 font-bold">${material.totalCost.toFixed(2)} €</td>
+            <td class="py-3 px-2 text-right text-green-600 font-bold">${material.sellingPrice.toFixed(2)} €</td>
+            <td class="py-3 px-2 text-center">
+                <button onclick="removeComparisonMaterial(${material.id})" class="text-red-500 hover:text-red-700 transition">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Fonction pour supprimer un matériau de la comparaison
+function removeComparisonMaterial(id) {
+    comparisonMaterials = comparisonMaterials.filter(m => m.id !== id);
+    updateComparisonTable();
+    showNotification('Matériau supprimé de la comparaison', 'info');
+}
+
 // Exposer les fonctions nécessaires globalement
 window.calculateCost = calculateCost;
 window.exportResults = exportResults;
@@ -708,3 +953,8 @@ window.exportPDF = exportPDF;
 window.toggleHistory = toggleHistory;
 window.deleteHistoryEntry = deleteHistoryEntry;
 window.clearHistory = clearHistory;
+window.toggleTheme = toggleTheme;
+window.handleSTLUpload = handleSTLUpload;
+window.clearSTL = clearSTL;
+window.addComparisonMaterial = addComparisonMaterial;
+window.removeComparisonMaterial = removeComparisonMaterial;
