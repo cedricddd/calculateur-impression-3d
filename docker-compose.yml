@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  calculateur-3d:
+    # Nom du conteneur
+    container_name: calculateur-impression-3d
+    
+    # Image à construire depuis le Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    # Ou utiliser directement l'image si déjà buildée et pushée sur Docker Hub
+    # image: votre-username/calculateur-3d:latest
+    
+    # Ports (host:container)
+    ports:
+      - "8080:80"  # Accessible sur http://IP_SERVEUR:8080
+    
+    # Redémarrage automatique
+    restart: unless-stopped
+    
+    # Variables d'environnement (si nécessaire)
+    environment:
+      - TZ=Europe/Paris
+    
+    # Volumes pour la persistance (optionnel)
+    # volumes:
+    #   - ./data:/data
+    
+    # Ressources limitées (optionnel mais recommandé)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    
+    # Réseau
+    networks:
+      - calculateur-network
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Labels pour Portainer
+    labels:
+      - "traefik.enable=false"
+      - "com.example.description=Calculateur de prix d'impression 3D"
+      - "com.example.department=Production"
+      - "com.example.version=2.1.0"
+
+networks:
+  calculateur-network:
+    driver: bridge

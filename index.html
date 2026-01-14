@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculateur de Prix d'Impression 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .result-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container mx-auto max-w-6xl">
+        <!-- Header -->
+        <div class="text-center mb-8 mt-4">
+            <h1 class="text-5xl font-bold text-white mb-3">
+                <i class="fas fa-cube mr-3"></i>Calculateur d'Impression 3D
+            </h1>
+            <p class="text-white text-lg opacity-90">Calculez précisément le coût de vos impressions 3D</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Panneau de saisie -->
+            <div class="lg:col-span-2">
+                <div class="glass-effect rounded-2xl p-6 mb-6">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+                        <i class="fas fa-sliders-h mr-3 text-purple-600"></i>Paramètres de l'impression
+                    </h2>
+
+                    <!-- Informations sur le filament -->
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center">
+                            <i class="fas fa-scroll mr-2 text-purple-500"></i>Filament
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Type de filament
+                                    <span class="tooltip ml-1">
+                                        <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                        <span class="tooltiptext">Sélectionnez le type de matériau utilisé</span>
+                                    </span>
+                                </label>
+                                <select id="filamentType" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                                    <option value="PLA">PLA</option>
+                                    <option value="ABS">ABS</option>
+                                    <option value="PETG">PETG</option>
+                                    <option value="TPU">TPU</option>
+                                    <option value="Nylon">Nylon</option>
+                                    <option value="PC">Polycarbonate (PC)</option>
+                                    <option value="ASA">ASA</option>
+                                    <option value="autre">Autre</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Prix du filament (€/kg)
+                                    <span class="tooltip ml-1">
+                                        <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                        <span class="tooltiptext">Prix d'achat du filament par kilogramme</span>
+                                    </span>
+                                </label>
+                                <input type="number" id="filamentPrice" value="20" step="0.01" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Poids utilisé (g)
+                                    <span class="tooltip ml-1">
+                                        <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                        <span class="tooltiptext">Poids de filament nécessaire pour l'impression</span>
+                                    </span>
+                                </label>
+                                <input type="number" id="filamentWeight" value="100" step="0.1" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Densité (g/cm³)
+                                    <span class="tooltip ml-1">
+                                        <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                        <span class="tooltiptext">Densité du matériau (PLA: 1.24, ABS: 1.04, PETG: 1.27)</span>
+                                    </span>
+                                </label>
+                                <input type="number" id="filamentDensity" value="1.24" step="0.01" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Temps d'impression -->
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center">
+                            <i class="fas fa-clock mr-2 text-purple-500"></i>Durée
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Heures</label>
+                                <input type="number" id="printHours" value="5" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Minutes</label>
+                                <input type="number" id="printMinutes" value="30" min="0" max="59" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Temps total
+                                    <span class="tooltip ml-1">
+                                        <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                        <span class="tooltiptext">Temps calculé automatiquement</span>
+                                    </span>
+                                </label>
+                                <input type="text" id="totalTime" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coûts d'exploitation -->
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center">
+                            <i class="fas fa-bolt mr-2 text-purple-500"></i>Coûts d'exploitation
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Consommation imprimante (W)
+                                    <span class="tooltip ml-1">
+                                        <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                        <span class="tooltiptext">Puissance moyenne de l'imprimante (généralement 50-250W)</span>
+                                    </span>
+                                </label>
+                                <input type="number" id="powerConsumption" value="120" step="1" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Prix électricité (€/kWh)
+                                    <span class="tooltip ml-1">
+                                        <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                        <span class="tooltiptext">Coût de l'électricité par kilowatt-heure (moyenne France: 0.19€)</span>
+                                    </span>
+                                </label>
+                                <input type="number" id="electricityPrice" value="0.19" step="0.01" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paramètres avancés (pliable) -->
+                    <div class="mb-6">
+                        <button id="toggleAdvanced" class="w-full flex items-center justify-between text-lg font-semibold text-gray-700 p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                            <span><i class="fas fa-cog mr-2 text-purple-500"></i>Paramètres avancés</span>
+                            <i class="fas fa-chevron-down transition-transform" id="advancedIcon"></i>
+                        </button>
+                        <div id="advancedParams" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Coût imprimante (€)
+                                        <span class="tooltip ml-1">
+                                            <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                            <span class="tooltiptext">Prix d'achat de l'imprimante</span>
+                                        </span>
+                                    </label>
+                                    <input type="number" id="printerCost" value="500" step="10" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Durée de vie (heures)
+                                        <span class="tooltip ml-1">
+                                            <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                            <span class="tooltiptext">Durée de vie estimée de l'imprimante en heures d'utilisation</span>
+                                        </span>
+                                    </label>
+                                    <input type="number" id="printerLifespan" value="5000" step="100" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Maintenance (€/heure)
+                                        <span class="tooltip ml-1">
+                                            <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                            <span class="tooltiptext">Coût de maintenance par heure d'impression</span>
+                                        </span>
+                                    </label>
+                                    <input type="number" id="maintenanceCost" value="0.1" step="0.01" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Taux d'échec (%)
+                                        <span class="tooltip ml-1">
+                                            <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                            <span class="tooltiptext">Pourcentage d'impressions ratées</span>
+                                        </span>
+                                    </label>
+                                    <input type="number" id="failureRate" value="5" step="1" min="0" max="100" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Marge bénéficiaire (%)
+                                        <span class="tooltip ml-1">
+                                            <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                            <span class="tooltiptext">Marge de profit souhaitée</span>
+                                        </span>
+                                    </label>
+                                    <input type="number" id="profitMargin" value="30" step="1" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Durée main-d'œuvre (heures)
+                                        <span class="tooltip ml-1">
+                                            <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                            <span class="tooltiptext">Temps de préparation, post-traitement, etc.</span>
+                                        </span>
+                                    </label>
+                                    <input type="number" id="laborHours" value="0.5" step="0.1" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Taux horaire main-d'œuvre (€/h)
+                                        <span class="tooltip ml-1">
+                                            <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                            <span class="tooltiptext">Coût horaire de la main-d'œuvre</span>
+                                        </span>
+                                    </label>
+                                    <input type="number" id="laborCost" value="50" step="1" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Préréglage Bambu Lab A1 -->
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center">
+                            <i class="fas fa-print mr-2 text-purple-500"></i>Imprimante
+                        </h3>
+                        <div class="flex justify-center">
+                            <button onclick="loadPreset('bambu-a1')" class="preset-btn bg-green-100 hover:bg-green-200 text-green-800 p-4 rounded-lg font-semibold transition shadow-md w-full md:w-auto">
+                                <i class="fas fa-cube mr-2"></i>Charger les paramètres Bambu Lab A1
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Boutons d'action -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                        <button onclick="saveConfig()" class="bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition shadow">
+                            <i class="fas fa-save mr-2"></i>Sauvegarder
+                        </button>
+                        <button onclick="loadConfig()" class="bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-semibold transition shadow">
+                            <i class="fas fa-folder-open mr-2"></i>Charger
+                        </button>
+                        <button onclick="resetToDefaults()" class="bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition shadow">
+                            <i class="fas fa-undo mr-2"></i>Réinitialiser
+                        </button>
+                        <button onclick="exportPDF()" class="bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition shadow">
+                            <i class="fas fa-file-pdf mr-2"></i>PDF
+                        </button>
+                    </div>
+
+                    <!-- Bouton de calcul -->
+                    <button onclick="calculateCost()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-lg font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition shadow-lg">
+                        <i class="fas fa-calculator mr-2"></i>Calculer le coût
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panneau des résultats -->
+            <div class="lg:col-span-1">
+                <div class="glass-effect rounded-2xl p-6 sticky top-4">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+                        <i class="fas fa-receipt mr-3 text-purple-600"></i>Résultats
+                    </h2>
+
+                    <div id="results" class="space-y-4">
+                        <!-- Coût total -->
+                        <div class="result-card rounded-xl p-6 text-center">
+                            <div class="text-sm opacity-90 mb-2">COÛT TOTAL</div>
+                            <div class="text-5xl font-bold" id="totalCost">0.00 €</div>
+                        </div>
+
+                        <!-- Détails des coûts -->
+                        <div class="bg-white rounded-xl p-4 space-y-3">
+                            <h3 class="font-semibold text-gray-700 mb-3 border-b pb-2">Détails</h3>
+                            
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-600"><i class="fas fa-scroll mr-2 text-purple-500"></i>Filament</span>
+                                <span class="font-semibold" id="filamentCost">0.00 €</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-600"><i class="fas fa-bolt mr-2 text-yellow-500"></i>Électricité</span>
+                                <span class="font-semibold" id="electricityCost">0.00 €</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-600"><i class="fas fa-print mr-2 text-blue-500"></i>Amortissement</span>
+                                <span class="font-semibold" id="depreciationCost">0.00 €</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-600"><i class="fas fa-tools mr-2 text-orange-500"></i>Maintenance</span>
+                                <span class="font-semibold" id="maintenanceCostDisplay">0.00 €</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-600"><i class="fas fa-exclamation-triangle mr-2 text-red-500"></i>Échecs</span>
+                                <span class="font-semibold" id="failureCost">0.00 €</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-600"><i class="fas fa-user-tie mr-2 text-green-500"></i>Main-d'œuvre</span>
+                                <span class="font-semibold" id="laborCostDisplay">0.00 €</span>
+                            </div>
+                        </div>
+
+                        <!-- Prix de vente suggéré -->
+                        <div class="bg-green-50 border-2 border-green-300 rounded-xl p-4">
+                            <div class="text-sm text-green-700 font-medium mb-2">PRIX DE VENTE SUGGÉRÉ</div>
+                            <div class="text-3xl font-bold text-green-600" id="sellingPrice">0.00 €</div>
+                            <div class="text-xs text-green-600 mt-1">avec marge bénéficiaire</div>
+                        </div>
+
+                        <!-- Statistiques supplémentaires -->
+                        <div class="bg-white rounded-xl p-4 space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Coût par gramme:</span>
+                                <span class="font-semibold" id="costPerGram">0.00 €</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Coût par heure:</span>
+                                <span class="font-semibold" id="costPerHour">0.00 €</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Volume (cm³):</span>
+                                <span class="font-semibold" id="volume">0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Graphique de répartition -->
+                        <div class="bg-white rounded-xl p-4">
+                            <h3 class="font-semibold text-gray-700 mb-3 text-center">Répartition des coûts</h3>
+                            <div style="height: 250px;">
+                                <canvas id="costChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Bouton historique -->
+                        <button onclick="toggleHistory()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white py-3 rounded-lg font-semibold transition shadow">
+                            <i class="fas fa-history mr-2"></i>Historique (<span id="historyCount">0</span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Historique -->
+        <div id="historyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="glass-effect rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-history mr-3 text-purple-600"></i>Historique des calculs
+                    </h2>
+                    <button onclick="toggleHistory()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="historyContent" class="space-y-4">
+                    <!-- Contenu généré dynamiquement -->
+                </div>
+                <div class="mt-6 flex gap-3">
+                    <button onclick="clearHistory()" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition">
+                        <i class="fas fa-trash mr-2"></i>Effacer l'historique
+                    </button>
+                    <button onclick="toggleHistory()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition">
+                        <i class="fas fa-times mr-2"></i>Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 mb-4 text-white">
+            <p class="opacity-75">Calculateur d'impression 3D - Tous les coûts sont estimatifs</p>
+        </div>
+    </div>
+
+    <script src="js/calculator.js"></script>
+</body>
+</html>
