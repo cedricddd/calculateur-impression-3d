@@ -15,7 +15,7 @@ services:
     
     # Ports (host:container)
     ports:
-      - "8080:80"  # Accessible sur http://IP_SERVEUR:8080
+      - "3080:80"  # Accessible sur http://IP_SERVEUR:8080
     
     # Redémarrage automatique
     restart: unless-stopped
