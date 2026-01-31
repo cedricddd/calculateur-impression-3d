@@ -6,12 +6,13 @@ FROM nginx:alpine
 # Métadonnées
 LABEL maintainer="votre-email@example.com"
 LABEL description="Calculateur de prix d'impression 3D - Application web statique"
-LABEL version="3.5.0"
+LABEL version="3.6.0"
 
 # Copier les fichiers de l'application dans le répertoire Nginx
 COPY index.html /usr/share/nginx/html/
 COPY favicon.svg /usr/share/nginx/html/
 COPY js/ /usr/share/nginx/html/js/
+COPY css/ /usr/share/nginx/html/css/
 COPY images/ /usr/share/nginx/html/images/
 COPY Documentation/ /usr/share/nginx/html/Documentation/
 COPY README.md /usr/share/nginx/html/
