@@ -27,7 +27,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
+
+    <!-- Three.js pour la visualisation 3D -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
     <!-- Script inline pour initialiser les fonctions critiques -->
     <script>
         // Fonction toggle theme - définie immédiatement
@@ -57,54 +67,167 @@
             }
         };
 
-        // Fonction handleSTLUpload - définie immédiatement
-        window.handleSTLUpload = async function(event) {
-            try {
-                const file = event.target.files[0];
-                if (!file) return;
+        // Structure pour stocker les pièces importées
+        window.importedParts = [];
+        window.partIdCounter = 0;
 
-                console.log('📁 Fichier sélectionné:', file.name, 'Type:', file.type, 'Taille:', file.size);
+        // Fonction pour ajouter une pièce à la liste
+        window.addPartToList = function(partData) {
+            console.log('✅ addPartToList appelée avec:', partData);
+            window.importedParts.push(partData);
+            console.log('📦 Pièces actuelles:', window.importedParts.length);
 
-                // Vérifier le format du fichier
-                const fileName = file.name.toLowerCase();
-                const is3MF = fileName.endsWith('.3mf');
-                const isSTL = fileName.endsWith('.stl');
+            // Afficher la section stlInfo
+            const stlInfo = document.getElementById('stlInfo');
+            if (stlInfo) {
+                stlInfo.classList.remove('hidden');
+                console.log('👁️ Section stlInfo affichée');
+            }
 
-                if (!isSTL && !is3MF) {
-                    alert('Format de fichier non supporté. Veuillez utiliser un fichier STL ou 3MF.');
-                    return;
+            window.renderPartsList();
+            window.updateTotals();
+        };
+
+        // Fonction pour supprimer une pièce
+        window.removePart = function(partId) {
+            window.importedParts = window.importedParts.filter(p => p.id !== partId);
+            window.renderPartsList();
+            window.updateTotals();
+            if (window.importedParts.length === 0) {
+                document.getElementById('stlInfo')?.classList.add('hidden');
+            }
+        };
+
+        // Fonction pour tout supprimer
+        window.clearAllParts = function() {
+            window.importedParts = [];
+            window.renderPartsList();
+            window.updateTotals();
+            document.getElementById('stlInfo')?.classList.add('hidden');
+            const weightInput = document.getElementById('filamentWeight');
+            if (weightInput) {
+                weightInput.value = '';
+                if (typeof window.calculateCost === 'function') window.calculateCost();
+            }
+        };
+
+        // Fonction pour mettre à jour les totaux
+        window.updateTotals = function() {
+            let totalVolume = 0;
+            let totalWeight = 0;
+            let totalTime = 0;
+            window.importedParts.forEach(p => {
+                totalVolume += p.volume * p.quantity;
+                totalWeight += p.weight * p.quantity;
+                if (p.printTime) totalTime += p.printTime * p.quantity;
+            });
+            document.getElementById('totalVolume').textContent = totalVolume.toFixed(2);
+            document.getElementById('totalWeight').textContent = totalWeight.toFixed(2);
+            document.getElementById('partsCount').textContent = window.importedParts.length;
+
+            // Afficher le temps total dans le récapitulatif
+            const totalTimeEl = document.getElementById('totalTime');
+            if (totalTimeEl) {
+                if (totalTime > 0) {
+                    const hours = Math.floor(totalTime / 3600);
+                    const minutes = Math.round((totalTime % 3600) / 60);
+                    totalTimeEl.textContent = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
+                } else {
+                    totalTimeEl.textContent = '-';
                 }
+            }
 
-                // Si c'est un fichier 3MF
-                if (is3MF) {
-                    console.log('📦 Fichier 3MF détecté - Extraction des métadonnées...');
-                    handle3MFFile(file);
-                    return;
+            // Mettre à jour le champ poids pour le calcul
+            const weightInput = document.getElementById('filamentWeight');
+            if (weightInput) {
+                weightInput.value = totalWeight.toFixed(2);
+            }
+
+            // Mettre à jour les champs Heures/Minutes avec le temps total
+            if (totalTime > 0) {
+                const totalHours = Math.floor(totalTime / 3600);
+                const totalMinutes = Math.round((totalTime % 3600) / 60);
+                const printHoursEl = document.getElementById('printHours');
+                const printMinutesEl = document.getElementById('printMinutes');
+                if (printHoursEl) printHoursEl.value = totalHours;
+                if (printMinutesEl) printMinutesEl.value = totalMinutes;
+            }
+
+            // Stocker le volume total
+            window.stlVolume = totalVolume;
+
+            // Recalculer les coûts
+            if (typeof window.calculateCost === 'function') window.calculateCost();
+        };
+
+        // Fonction pour afficher la liste des pièces
+        window.renderPartsList = function() {
+            console.log('🎨 renderPartsList appelée, pièces:', window.importedParts.length);
+            const container = document.getElementById('partsList');
+            const template = document.getElementById('partTemplate');
+            console.log('🎨 container:', container, 'template:', template);
+            if (!container || !template) {
+                console.error('❌ Éléments manquants!');
+                return;
+            }
+
+            container.innerHTML = '';
+            window.importedParts.forEach((part, idx) => {
+                console.log('🎨 Ajout pièce', idx, ':', part.name);
+                const clone = template.content.cloneNode(true);
+                clone.querySelector('.part-name').textContent = part.name;
+                clone.querySelector('.part-volume').textContent = part.volume.toFixed(2);
+                clone.querySelector('.part-weight').textContent = part.weight.toFixed(2);
+                const qtyInput = clone.querySelector('.part-quantity');
+                qtyInput.value = part.quantity;
+                qtyInput.addEventListener('change', (e) => {
+                    part.quantity = Math.max(1, parseInt(e.target.value) || 1);
+                    window.updateTotals();
+                });
+                clone.querySelector('.remove-part').addEventListener('click', () => window.removePart(part.id));
+                container.appendChild(clone);
+            });
+            console.log('🎨 Liste rendue, enfants:', container.children.length);
+        };
+
+        // Fonction pour traiter un seul fichier STL/3MF
+        window.processFile = async function(file) {
+            const fileName = file.name.toLowerCase();
+            const is3MF = fileName.endsWith('.3mf');
+            const isSTL = fileName.endsWith('.stl');
+
+            if (!isSTL && !is3MF) {
+                console.warn('Format non supporté:', file.name);
+                return;
+            }
+
+            if (is3MF) {
+                console.log('📦 Fichier 3MF détecté:', file.name);
+                try {
+                    await handle3MFFile(file);
+                } catch (err) {
+                    console.error('❌ Erreur handle3MFFile:', err);
                 }
+                return;
+            }
 
-                // Traitement des fichiers STL
-                console.log('🔷 Fichier STL détecté, analyse en cours...');
+            // Traitement STL
+            return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     try {
                         const arrayBuffer = e.target.result;
                         const view = new DataView(arrayBuffer);
-                        
+
                         let isBinary = true;
                         if (arrayBuffer.byteLength > 5) {
                             const header = String.fromCharCode.apply(null, new Uint8Array(arrayBuffer.slice(0, 5)));
-                            if (header === 'solid') {
-                                isBinary = false;
-                                console.log('📄 STL ASCII détecté');
-                            } else {
-                                console.log('📦 STL binaire détecté');
-                            }
+                            if (header === 'solid') isBinary = false;
                         }
-                        
+
                         let volume = 0;
                         if (isBinary && arrayBuffer.byteLength > 84) {
                             const numTriangles = view.getUint32(80, true);
-                            console.log('🔺 Nombre de triangles:', numTriangles);
                             for (let i = 0; i < numTriangles; i++) {
                                 const offset = 84 + i * 50 + 12;
                                 if (offset + 36 <= arrayBuffer.byteLength) {
@@ -117,7 +240,7 @@
                                     const v3x = view.getFloat32(offset + 24, true);
                                     const v3y = view.getFloat32(offset + 28, true);
                                     const v3z = view.getFloat32(offset + 32, true);
-                                    
+
                                     const crossX = v2y * v3z - v2z * v3y;
                                     const crossY = v2z * v3x - v2x * v3z;
                                     const crossZ = v2x * v3y - v2y * v3x;
@@ -126,60 +249,62 @@
                                 }
                             }
                         }
-                        
+
                         volume = Math.abs(volume) / 1000;
-                        console.log('📐 Volume calculé:', volume, 'cm³');
-                        
                         const densityEl = document.getElementById('filamentDensity');
                         const density = densityEl ? parseFloat(densityEl.value) || 1.24 : 1.24;
                         const weight = volume * density;
-                        console.log('⚖️ Poids estimé:', weight, 'g (densité:', density, 'g/cm³)');
-                        
-                        // Mise à jour de l'interface
-                        const stlInfo = document.getElementById('stlInfo');
-                        if (stlInfo) {
-                            stlInfo.classList.remove('hidden');
-                            const fileNameEl = document.getElementById('stlFileName');
-                            const volumeEl = document.getElementById('stlVolume');
-                            const weightEl = document.getElementById('stlWeight');
-                            
-                            if (fileNameEl) fileNameEl.textContent = file.name;
-                            if (volumeEl) volumeEl.textContent = volume.toFixed(2);
-                            if (weightEl) weightEl.textContent = weight.toFixed(2);
-                            
-                            const weightInput = document.getElementById('filamentWeight');
-                            if (weightInput) {
-                                weightInput.value = weight.toFixed(2);
-                                // Déclencher le recalcul si la fonction existe
-                                if (typeof window.calculateCost === 'function') {
-                                    window.calculateCost();
-                                }
+
+                        // Ajouter à la liste des pièces
+                        window.addPartToList({
+                            id: ++window.partIdCounter,
+                            name: file.name,
+                            volume: volume,
+                            weight: weight,
+                            quantity: 1,
+                            arrayBuffer: arrayBuffer,
+                            isBinary: isBinary
+                        });
+
+                        // Afficher la section
+                        document.getElementById('stlInfo')?.classList.remove('hidden');
+
+                        // Afficher le dernier modèle 3D
+                        setTimeout(function() {
+                            if (typeof window.display3DModel === 'function') {
+                                window.display3DModel(arrayBuffer, isBinary);
                             }
-                            
-                            // Stocker le volume pour le calcul du temps
-                            window.stlVolume = volume;
-                            console.log('✅ Volume STL stocké:', volume, 'cm³');
-                            
-                            // Calculer et afficher le temps estimé (avec un petit délai pour s'assurer que tout est chargé)
-                            setTimeout(function() {
-                                console.log('⏱️ Tentative de calcul du temps...');
-                                if (typeof window.updateTimeEstimate === 'function') {
-                                    console.log('✓ Fonction updateTimeEstimate trouvée');
-                                    window.updateTimeEstimate();
-                                } else {
-                                    console.error('✗ Fonction updateTimeEstimate non trouvée');
-                                }
-                            }, 100);
-                        }
+                        }, 200);
+
+                        resolve();
                     } catch (err) {
                         console.error('Erreur analyse STL:', err);
-                        alert('Erreur lors de l\'analyse du fichier STL: ' + err.message);
+                        resolve();
                     }
                 };
-                reader.onerror = function() {
-                    alert('Erreur lors de la lecture du fichier');
-                };
+                reader.onerror = () => resolve();
                 reader.readAsArrayBuffer(file);
+            });
+        };
+
+        // Fonction handleSTLUpload - gère plusieurs fichiers
+        window.handleSTLUpload = async function(event) {
+            console.log('🚀 handleSTLUpload appelée !', event);
+            try {
+                const files = event.target.files;
+                console.log('📄 Fichiers reçus:', files?.length);
+                if (!files || files.length === 0) {
+                    console.warn('⚠️ Aucun fichier sélectionné');
+                    return;
+                }
+
+                // Traiter chaque fichier
+                for (const file of files) {
+                    await window.processFile(file);
+                }
+
+                // Réinitialiser l'input pour permettre de resélectionner les mêmes fichiers
+                event.target.value = '';
             } catch (e) {
                 console.error('Erreur handleSTLUpload:', e);
                 alert('Erreur: ' + e.message);
@@ -300,13 +425,174 @@
             }
         };
 
-        // Fonction clearSTL - définie immédiatement
+        // Fonction clearSTL - redirige vers clearAllParts
         window.clearSTL = function() {
-            const stlInfo = document.getElementById('stlInfo');
-            const stlInput = document.getElementById('stlFileInput');
-            if (stlInfo) stlInfo.classList.add('hidden');
-            if (stlInput) stlInput.value = '';
-            window.stlVolume = 0;
+            window.clearAllParts();
+            // Nettoyer la scène 3D
+            if (typeof window.clear3DScene === 'function') {
+                window.clear3DScene();
+            }
+        };
+
+        // Fonction pour appliquer une matrice de transformation 4x3 à un vertex
+        function applyTransform(vertex, matrix) {
+            if (!matrix) return vertex;
+            const x = vertex.x * matrix[0] + vertex.y * matrix[3] + vertex.z * matrix[6] + matrix[9];
+            const y = vertex.x * matrix[1] + vertex.y * matrix[4] + vertex.z * matrix[7] + matrix[10];
+            const z = vertex.x * matrix[2] + vertex.y * matrix[5] + vertex.z * matrix[8] + matrix[11];
+            return { x, y, z };
+        }
+
+        // Parser une chaîne de transformation 3MF en matrice
+        function parseTransformMatrix(transformStr) {
+            if (!transformStr) return null;
+            const values = transformStr.trim().split(/\s+/).map(parseFloat);
+            if (values.length !== 12) return null;
+            return values;
+        }
+
+        // Fonction pour calculer le volume d'un maillage 3MF à partir des fichiers XML
+        // Retourne un objet { volume, renderVertices } pour le calcul et l'affichage 3D
+        window.calculate3MFMeshVolume = async function(zip) {
+            let totalVolume = 0;
+            let allRenderVertices = []; // Vertices aplatis pour le rendu 3D [x1,y1,z1,x2,y2,z2,...]
+
+            try {
+                // Trouver tous les fichiers .model (peuvent être dans 3D/ ou 3D/Objects/)
+                const modelFiles = Object.keys(zip.files).filter(name =>
+                    name.toLowerCase().endsWith('.model') &&
+                    (name.includes('Objects/') || name.includes('3D/'))
+                );
+
+                console.log('📂 Fichiers .model trouvés:', modelFiles);
+
+                if (modelFiles.length === 0) {
+                    console.warn('⚠️ Aucun fichier .model trouvé pour calculer le volume');
+                    return { volume: 0, renderVertices: [] };
+                }
+
+                for (const modelFileName of modelFiles) {
+                    const modelFile = zip.file(modelFileName);
+                    if (!modelFile) continue;
+
+                    const modelXML = await modelFile.async('string');
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(modelXML, 'text/xml');
+
+                    // Extraire tous les objets avec leurs IDs et meshes
+                    const objects = {};
+                    const objectElements = xmlDoc.getElementsByTagName('object');
+
+                    for (let objIdx = 0; objIdx < objectElements.length; objIdx++) {
+                        const objEl = objectElements[objIdx];
+                        const objId = objEl.getAttribute('id');
+
+                        // Trouver le mesh de cet objet
+                        const meshEl = objEl.getElementsByTagName('mesh')[0];
+                        if (!meshEl) continue;
+
+                        // Extraire les vertices de cet objet
+                        const vertexElements = meshEl.getElementsByTagName('vertex');
+                        if (vertexElements.length === 0) continue;
+
+                        const vertices = [];
+                        for (let i = 0; i < vertexElements.length; i++) {
+                            const v = vertexElements[i];
+                            vertices.push({
+                                x: parseFloat(v.getAttribute('x')) || 0,
+                                y: parseFloat(v.getAttribute('y')) || 0,
+                                z: parseFloat(v.getAttribute('z')) || 0
+                            });
+                        }
+
+                        // Extraire les triangles de cet objet
+                        const triangleElements = meshEl.getElementsByTagName('triangle');
+                        if (triangleElements.length === 0) continue;
+
+                        const triangles = [];
+                        for (let i = 0; i < triangleElements.length; i++) {
+                            const t = triangleElements[i];
+                            triangles.push({
+                                v1: parseInt(t.getAttribute('v1')) || 0,
+                                v2: parseInt(t.getAttribute('v2')) || 0,
+                                v3: parseInt(t.getAttribute('v3')) || 0
+                            });
+                        }
+
+                        objects[objId] = { vertices, triangles };
+                        console.log(`📦 Objet ${objId}: ${vertices.length} vertices, ${triangles.length} triangles`);
+                    }
+
+                    // Extraire les items du build avec leurs transformations
+                    const buildItems = xmlDoc.getElementsByTagName('item');
+                    const itemTransforms = [];
+
+                    for (let i = 0; i < buildItems.length; i++) {
+                        const item = buildItems[i];
+                        const objectId = item.getAttribute('objectid');
+                        const transformStr = item.getAttribute('transform');
+                        const transform = parseTransformMatrix(transformStr);
+
+                        if (objectId && objects[objectId]) {
+                            itemTransforms.push({ objectId, transform });
+                            console.log(`📍 Item référence objet ${objectId}`, transform ? '(avec transformation)' : '(sans transformation)');
+                        }
+                    }
+
+                    // Si pas d'items dans le build, utiliser tous les objets sans transformation
+                    if (itemTransforms.length === 0) {
+                        for (const objId of Object.keys(objects)) {
+                            itemTransforms.push({ objectId: objId, transform: null });
+                        }
+                    }
+
+                    // Traiter chaque item avec sa transformation
+                    for (const { objectId, transform } of itemTransforms) {
+                        const obj = objects[objectId];
+                        if (!obj) continue;
+
+                        let meshVolume = 0;
+
+                        for (const tri of obj.triangles) {
+                            if (tri.v1 >= obj.vertices.length || tri.v2 >= obj.vertices.length || tri.v3 >= obj.vertices.length) {
+                                continue;
+                            }
+
+                            // Appliquer la transformation aux vertices
+                            const v1 = applyTransform(obj.vertices[tri.v1], transform);
+                            const v2 = applyTransform(obj.vertices[tri.v2], transform);
+                            const v3 = applyTransform(obj.vertices[tri.v3], transform);
+
+                            // Ajouter les vertices transformés pour le rendu 3D
+                            allRenderVertices.push(v1.x, v1.y, v1.z);
+                            allRenderVertices.push(v2.x, v2.y, v2.z);
+                            allRenderVertices.push(v3.x, v3.y, v3.z);
+
+                            // Calcul du volume signé du tétraèdre
+                            const crossX = v2.y * v3.z - v2.z * v3.y;
+                            const crossY = v2.z * v3.x - v2.x * v3.z;
+                            const crossZ = v2.x * v3.y - v2.y * v3.x;
+                            const dot = v1.x * crossX + v1.y * crossY + v1.z * crossZ;
+
+                            meshVolume += dot / 6;
+                        }
+
+                        meshVolume = Math.abs(meshVolume);
+                        totalVolume += meshVolume;
+                        console.log(`📊 Volume de l'objet ${objectId}: ${meshVolume.toFixed(2)} mm³`);
+                    }
+                }
+
+                // Convertir de mm³ en cm³
+                totalVolume = totalVolume / 1000;
+                console.log(`✅ Volume total calculé depuis le maillage 3MF: ${totalVolume.toFixed(2)} cm³`);
+                console.log(`🎮 ${allRenderVertices.length / 3} vertices extraits pour le rendu 3D`);
+
+            } catch (err) {
+                console.error('❌ Erreur lors du calcul du volume 3MF:', err);
+            }
+
+            return { volume: totalVolume, renderVertices: allRenderVertices };
         };
 
         // Fonction pour gérer les fichiers 3MF
@@ -364,11 +650,11 @@
                 // Chercher et lire slice_info.config
                 let sliceConfig = {};
                 const sliceInfoFile = zip.file(/Metadata\/slice_info\.config$/i)[0];
-                
+
                 if (sliceInfoFile) {
                     console.log('📄 Lecture du fichier:', sliceInfoFile.name);
                     const sliceInfoContent = await sliceInfoFile.async('string');
-                    
+
                     // Parser le fichier config (format key = value)
                     sliceInfoContent.split('\n').forEach(line => {
                         const match = line.match(/^(\w+)\s*=\s*(.+)$/);
@@ -378,7 +664,23 @@
                     });
                     console.log('📊 Configuration de tranchage extraite:', sliceConfig);
                 }
-                
+
+                // Chercher et lire project_settings.config (Bambu Studio)
+                let projectSettings = {};
+                const projectSettingsFile = zip.file(/Metadata\/project_settings\.config$/i)[0];
+
+                if (projectSettingsFile) {
+                    console.log('📄 Lecture du fichier:', projectSettingsFile.name);
+                    const projectSettingsContent = await projectSettingsFile.async('string');
+
+                    try {
+                        projectSettings = JSON.parse(projectSettingsContent);
+                        console.log('📊 Paramètres du projet Bambu Studio extraits');
+                    } catch (e) {
+                        console.warn('⚠️ Erreur lors du parsing des paramètres du projet:', e);
+                    }
+                }
+
                 // Chercher et lire le G-code pour extraire les métadonnées
                 let gcodeData = {};
                 const gcodeFile = zip.file(/Metadata\/plate_\d+\.gcode$/i)[0];
@@ -494,10 +796,13 @@
                     if (filamentLength > 0) console.log('  📏 Longueur depuis XML:', filamentLength, 'mm');
                 }
                 
-                // Hauteur de couche
+                // Hauteur de couche (priorité: sliceConfig > projectSettings > plateData > metadata)
                 if (sliceConfig.layer_height) {
                     layerHeight = parseFloat(sliceConfig.layer_height) || 0.2;
                     console.log('  📐 Hauteur depuis config:', layerHeight, 'mm');
+                } else if (projectSettings.layer_height) {
+                    layerHeight = parseFloat(projectSettings.layer_height) || 0.2;
+                    console.log('  📐 Hauteur depuis project_settings:', layerHeight, 'mm');
                 } else if (plateData?.layer_height) {
                     layerHeight = parseFloat(plateData.layer_height) || 0.2;
                     console.log('  📐 Hauteur depuis JSON:', layerHeight, 'mm');
@@ -505,11 +810,17 @@
                     layerHeight = parseFloat(metadata['layer_height'] || metadata['slic3r:layer_height'] || 0.2);
                     if (layerHeight !== 0.2) console.log('  📐 Hauteur depuis XML:', layerHeight, 'mm');
                 }
-                
+
                 // Vitesse d'impression
                 if (sliceConfig.print_speed) {
                     printSpeed = parseFloat(sliceConfig.print_speed) || 50;
                     console.log('  🏃 Vitesse depuis config:', printSpeed, 'mm/s');
+                } else if (projectSettings.inner_wall_speed || projectSettings.outer_wall_speed) {
+                    // Bambu Studio utilise différentes vitesses pour les parois internes/externes
+                    const innerSpeed = parseFloat(projectSettings.inner_wall_speed) || 0;
+                    const outerSpeed = parseFloat(projectSettings.outer_wall_speed) || 0;
+                    printSpeed = innerSpeed > 0 ? innerSpeed : (outerSpeed > 0 ? outerSpeed : 50);
+                    console.log('  🏃 Vitesse depuis project_settings:', printSpeed, 'mm/s');
                 } else if (sliceConfig.default_speed) {
                     printSpeed = parseFloat(sliceConfig.default_speed) || 50;
                     console.log('  🏃 Vitesse depuis config (default):', printSpeed, 'mm/s');
@@ -517,9 +828,15 @@
                     printSpeed = parseFloat(metadata['print_speed'] || metadata['slic3r:perimeter_speed'] || 50);
                     if (printSpeed !== 50) console.log('  🏃 Vitesse depuis XML:', printSpeed, 'mm/s');
                 }
-                
+
                 // Taux de remplissage
-                if (sliceConfig.sparse_infill_density) {
+                if (projectSettings.sparse_infill_density) {
+                    // Bambu Studio stocke le remplissage dans project_settings
+                    const infillStr = String(projectSettings.sparse_infill_density).replace('%', '');
+                    infill = parseFloat(infillStr) || 20;
+                    if (infill <= 1) infill *= 100; // Convertir 0.2 en 20
+                    console.log('  📊 Remplissage depuis project_settings:', infill, '%');
+                } else if (sliceConfig.sparse_infill_density) {
                     // Format possible: "20%" ou "0.2"
                     const infillStr = String(sliceConfig.sparse_infill_density).replace('%', '');
                     infill = parseFloat(infillStr) || 20;
@@ -543,71 +860,88 @@
                 console.log('  🏃 Vitesse:', printSpeed, 'mm/s');
                 console.log('  📊 Remplissage:', infill, '%');
                 
-                // Calculer le volume depuis le poids si disponible
+                // Calculer le volume et le poids
                 const densityEl = document.getElementById('filamentDensity');
                 const density = densityEl ? parseFloat(densityEl.value) || 1.24 : 1.24;
-                const volume = filamentWeight > 0 ? filamentWeight / density : 0;
-                
-                // Afficher les informations
-                const stlInfo = document.getElementById('stlInfo');
-                if (stlInfo) {
-                    stlInfo.classList.remove('hidden');
-                    
-                    const fileNameEl = document.getElementById('stlFileName');
-                    const volumeEl = document.getElementById('stlVolume');
-                    const weightEl = document.getElementById('stlWeight');
-                    const timeEl = document.getElementById('stlTime');
-                    
-                    if (fileNameEl) fileNameEl.textContent = file.name + ' (3MF)';
-                    if (volumeEl) volumeEl.textContent = volume > 0 ? volume.toFixed(2) : 'N/A';
-                    if (weightEl) weightEl.textContent = filamentWeight > 0 ? filamentWeight.toFixed(2) : 'N/A';
-                    
-                    // Afficher le temps
-                    if (printTime > 0) {
-                        const hours = Math.floor(printTime / 3600);
-                        const minutes = Math.round((printTime % 3600) / 60);
-                        if (timeEl) timeEl.textContent = hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`;
-                        
-                        // Remplir les champs de temps
-                        const printHoursEl = document.getElementById('printHours');
-                        const printMinutesEl = document.getElementById('printMinutes');
-                        
-                        if (printHoursEl) {
-                            printHoursEl.value = hours;
-                            printHoursEl.dispatchEvent(new Event('input', { bubbles: true }));
+
+                let volume = 0;
+
+                // Toujours extraire les vertices pour l'affichage 3D
+                console.log('🔍 Extraction des données de maillage 3D...');
+                const meshData = await calculate3MFMeshVolume(zip);
+                window._3mfRenderVertices = meshData.renderVertices;
+
+                // Si on a le poids du filament (fichier tranché), calculer le volume depuis le poids
+                if (filamentWeight > 0) {
+                    volume = filamentWeight / density;
+                    console.log('📐 Volume calculé depuis le poids:', volume.toFixed(2), 'cm³');
+                } else {
+                    // Sinon, utiliser le volume calculé depuis le maillage 3D
+                    volume = meshData.volume;
+
+                    if (volume > 0) {
+                        // Estimer le poids à partir du volume et de la densité
+                        // Le volume du maillage est le volume brut, mais l'impression n'est pas à 100% solide
+                        // On applique un facteur basé sur le remplissage (infill)
+                        const infillFactor = (infill / 100) * 0.8 + 0.2; // Min 20% pour les parois
+                        filamentWeight = volume * density * infillFactor;
+                        console.log('⚖️ Poids estimé (infill ' + infill + '%):', filamentWeight.toFixed(2), 'g');
+
+                        // Estimer le temps d'impression si non disponible
+                        if (printTime === 0) {
+                            // Estimation basée sur le volume et les paramètres
+                            // Formule simplifiée: temps = volume * facteur / vitesse
+                            const avgDimension = Math.pow(volume * 1000, 1/3); // mm
+                            const numLayers = Math.ceil(avgDimension / layerHeight);
+                            const avgPerimeter = 4 * Math.pow(volume * 1000 / avgDimension, 0.5);
+                            const layerArea = (volume * 1000) / avgDimension;
+
+                            const perimeterDistance = avgPerimeter * 2.5 * numLayers;
+                            const infillDistance = (layerArea * (infill / 100) * numLayers) / layerHeight;
+                            const totalDistance = perimeterDistance + infillDistance;
+
+                            const perimeterTime = (perimeterDistance / (printSpeed * 0.7)) / 60;
+                            const infillTime = (infillDistance / printSpeed) / 60;
+                            let totalMinutes = (perimeterTime + infillTime) * 1.3;
+
+                            printTime = Math.round(totalMinutes) * 60; // Convertir en secondes
+                            console.log('⏱️ Temps estimé depuis le volume:', Math.round(totalMinutes), 'minutes');
                         }
-                        if (printMinutesEl) {
-                            printMinutesEl.value = minutes;
-                            printMinutesEl.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    } else if (timeEl) {
-                        timeEl.textContent = 'Non disponible';
-                    }
-                    
-                    // Remplir le poids
-                    if (filamentWeight > 0) {
-                        const weightInput = document.getElementById('filamentWeight');
-                        if (weightInput) {
-                            weightInput.value = filamentWeight.toFixed(2);
-                            weightInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    }
-                    
-                    // Remplir les paramètres d'impression si disponibles
-                    if (layerHeight > 0) {
-                        const layerHeightEl = document.getElementById('layerHeight');
-                        if (layerHeightEl) layerHeightEl.value = layerHeight;
-                    }
-                    if (printSpeed > 0) {
-                        const printSpeedEl = document.getElementById('printSpeed');
-                        if (printSpeedEl) printSpeedEl.value = printSpeed;
-                    }
-                    if (infill > 0) {
-                        const infillEl = document.getElementById('infillDensity');
-                        if (infillEl) infillEl.value = infill;
                     }
                 }
                 
+                // Ajouter la pièce à la liste des pièces importées
+                console.log('🎯 Avant addPartToList - volume:', volume, 'weight:', filamentWeight);
+                window.addPartToList({
+                    id: ++window.partIdCounter,
+                    name: file.name,
+                    volume: volume > 0 ? volume : 0,
+                    weight: filamentWeight > 0 ? filamentWeight : 0,
+                    quantity: 1,
+                    printTime: printTime,
+                    is3MF: true
+                });
+                console.log('🎯 Après addPartToList');
+
+                // Afficher la section
+                document.getElementById('stlInfo')?.classList.remove('hidden');
+
+                // Remplir les paramètres d'impression si disponibles
+                if (layerHeight > 0) {
+                    const layerHeightEl = document.getElementById('layerHeight');
+                    if (layerHeightEl) layerHeightEl.value = layerHeight;
+                }
+                if (printSpeed > 0) {
+                    const printSpeedEl = document.getElementById('printSpeed');
+                    if (printSpeedEl) printSpeedEl.value = printSpeed;
+                }
+                if (infill > 0) {
+                    const infillEl = document.getElementById('infillDensity');
+                    if (infillEl) infillEl.value = infill;
+                }
+
+                // Note: Les champs Heures/Minutes sont mis à jour par updateTotals avec le temps total
+
                 // Remplir le champ fileName dans le panneau des résultats
                 const fileNameResultEl = document.getElementById('fileName');
                 if (fileNameResultEl) {
@@ -658,7 +992,21 @@
                         });
                     }, 100);
                 }
-                
+
+                // Afficher le modèle 3D si des vertices ont été extraits
+                setTimeout(function() {
+                    if (window._3mfRenderVertices && window._3mfRenderVertices.length > 0) {
+                        if (typeof window.display3DMFModel === 'function') {
+                            console.log('🎮 Affichage du modèle 3MF...');
+                            window.display3DMFModel(window._3mfRenderVertices);
+                        } else {
+                            console.warn('⚠️ Fonction display3DMFModel non encore chargée');
+                        }
+                    } else {
+                        console.log('ℹ️ Pas de vertices 3D disponibles pour ce fichier 3MF (fichier déjà tranché?)');
+                    }
+                }, 300);
+
                 console.log('✅ Extraction 3MF terminée avec succès');
                 
             } catch (err) {
@@ -689,6 +1037,34 @@
                     text.textContent = 'Mode Sombre';
                 }
             }
+
+            // Attacher les event listeners pour les inputs file (plus fiable que onchange inline)
+            const fileInput = document.getElementById('fileInput');
+            const stlFileInput = document.getElementById('stlFileInput');
+
+            if (fileInput) {
+                fileInput.addEventListener('change', async function(e) {
+                    console.log('📂 fileInput change event');
+                    try {
+                        await handleSTLUpload(e);
+                    } catch (err) {
+                        console.error('❌ Erreur dans handleSTLUpload:', err);
+                    }
+                });
+            }
+
+            if (stlFileInput) {
+                stlFileInput.addEventListener('change', async function(e) {
+                    console.log('📂 stlFileInput change event');
+                    try {
+                        await handleSTLUpload(e);
+                    } catch (err) {
+                        console.error('❌ Erreur dans handleSTLUpload:', err);
+                    }
+                });
+            }
+
+            console.log('✅ Event listeners attachés aux inputs file');
         });
 
         // Enhanced Drag & Drop handlers
@@ -710,7 +1086,7 @@
             }
         };
 
-        window.handleDrop = function(event) {
+        window.handleDrop = async function(event) {
             event.preventDefault();
             event.stopPropagation();
             const zone = document.getElementById('uploadZone');
@@ -720,14 +1096,27 @@
 
             const files = event.dataTransfer.files;
             if (files.length > 0) {
-                const file = files[0];
-                const fileName = file.name.toLowerCase();
-                if (fileName.endsWith('.stl') || fileName.endsWith('.3mf')) {
-                    // Create a fake event object for handleSTLUpload
-                    const fakeEvent = { target: { files: [file] } };
-                    handleSTLUpload(fakeEvent);
-                } else {
-                    alert('Format non supporté. Veuillez utiliser un fichier STL ou 3MF.');
+                // Filtrer les fichiers valides
+                const validFiles = [];
+                const invalidFiles = [];
+                for (const file of files) {
+                    const fileName = file.name.toLowerCase();
+                    if (fileName.endsWith('.stl') || fileName.endsWith('.3mf')) {
+                        validFiles.push(file);
+                    } else {
+                        invalidFiles.push(file.name);
+                    }
+                }
+
+                // Traiter tous les fichiers valides
+                if (validFiles.length > 0) {
+                    const fakeEvent = { target: { files: validFiles } };
+                    await handleSTLUpload(fakeEvent);
+                }
+
+                // Avertir pour les fichiers invalides
+                if (invalidFiles.length > 0) {
+                    alert('Fichiers ignorés (format non supporté) :\n' + invalidFiles.join('\n'));
                 }
             }
         };
@@ -769,7 +1158,7 @@
     </script>
     
     <style>
-        /* Ced-IT Theme Colors */
+        /* Ced-IT Theme Colors - Enhanced */
         :root {
             --bg-primary: #0a1628;
             --bg-secondary: #0d1f35;
@@ -777,7 +1166,15 @@
             --bg-card: #0f2541;
             --accent-cyan: #00d4ff;
             --accent-cyan-dark: #00a8cc;
+            --accent-blue: #0066ff;
+            --accent-purple: #8b5cf6;
+            --accent-magenta: #d946ef;
+            --accent-teal: #14b8a6;
+            --accent-orange: #f97316;
+            --accent-green: #22c55e;
             --accent-gradient: linear-gradient(135deg, #00d4ff 0%, #0066ff 100%);
+            --accent-gradient-warm: linear-gradient(135deg, #f97316 0%, #d946ef 100%);
+            --accent-gradient-cool: linear-gradient(135deg, #14b8a6 0%, #8b5cf6 100%);
             --bg-gradient-start: #0a1628;
             --bg-gradient-end: #132743;
             --glass-bg: rgba(15, 37, 65, 0.95);
@@ -927,16 +1324,17 @@
 
         /* ========== ENHANCED HEADER ========== */
         .header-title {
-            background: linear-gradient(135deg, #00d4ff 0%, #0066ff 50%, #00d4ff 100%);
-            background-size: 200% auto;
+            background: linear-gradient(135deg, #00d4ff 0%, #0066ff 25%, #8b5cf6 50%, #d946ef 75%, #00d4ff 100%);
+            background-size: 300% auto;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            animation: shimmer 3s linear infinite;
+            animation: shimmer 4s linear infinite;
         }
 
         .logo-float {
             animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.4));
         }
 
         /* ========== UPLOAD ZONE ENHANCED ========== */
@@ -1144,6 +1542,20 @@
             border-radius: 12px;
             padding: 1rem;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--accent-gradient);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .stat-card:hover {
@@ -1151,6 +1563,14 @@
             transform: translateY(-3px);
             box-shadow: 0 10px 30px rgba(0, 212, 255, 0.15);
         }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card:nth-child(1)::before { background: linear-gradient(90deg, #00d4ff, #0066ff); }
+        .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #8b5cf6, #d946ef); }
+        .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #14b8a6, #22c55e); }
 
         /* ========== COMPARISON TABLE ENHANCED ========== */
         .comparison-row {
@@ -1229,6 +1649,7 @@
         .tooltip {
             position: relative;
             display: inline-block;
+            vertical-align: middle;
         }
         .tooltip .tooltiptext {
             visibility: hidden;
@@ -1239,13 +1660,14 @@
             border-radius: 6px;
             padding: 5px;
             position: absolute;
-            z-index: 1;
+            z-index: 100;
             bottom: 125%;
             left: 50%;
             margin-left: -100px;
             opacity: 0;
             transition: opacity 0.3s;
             font-size: 12px;
+            pointer-events: none;
         }
         .tooltip:hover .tooltiptext {
             visibility: visible;
@@ -1254,6 +1676,135 @@
         [data-theme="dark"] .tooltip .tooltiptext {
             background-color: #1f2937;
             border: 1px solid #374151;
+        }
+
+        /* Fix pour les chevauchements de labels */
+        .block.text-sm.font-medium {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.25rem;
+            line-height: 1.4;
+        }
+
+        /* Fix pour les grilles - empêcher le débordement */
+        .grid {
+            overflow: visible;
+        }
+        .grid > div {
+            min-width: 0;
+            overflow: visible;
+        }
+
+        /* Fix pour les inputs dans les grilles */
+        input[type="number"],
+        input[type="text"],
+        select {
+            min-width: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Fix pour les labels avec tooltips - empêcher le chevauchement */
+        label.block {
+            display: block;
+            width: 100%;
+        }
+        label .tooltip {
+            flex-shrink: 0;
+        }
+
+        /* Fix spécifique pour les grilles md:grid-cols-2 et md:grid-cols-3 */
+        @media (min-width: 768px) {
+            .md\:grid-cols-2 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 1.5rem;
+            }
+            .md\:grid-cols-3 {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 1.5rem;
+            }
+        }
+
+        /* Fix pour le panneau Détails des coûts */
+        .cost-item {
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+        }
+        .cost-bar-container {
+            overflow: hidden;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        /* Fix pour les icônes dans les détails des coûts */
+        .cost-item .flex {
+            flex-wrap: nowrap;
+        }
+        .cost-item span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Fix pour les statistiques en bas */
+        .stat-card {
+            min-width: 0;
+            overflow: hidden;
+        }
+        .stat-card .font-bold {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Fix pour le panneau sticky des résultats */
+        .sticky {
+            overflow: visible;
+        }
+        .sticky > div {
+            max-width: 100%;
+        }
+
+        /* Fix pour le layout principal lg:grid-cols-3 */
+        @media (min-width: 1024px) {
+            .lg\:grid-cols-3 {
+                grid-template-columns: 2fr 1fr;
+                gap: 1.5rem;
+            }
+            .lg\:col-span-2 {
+                grid-column: span 1;
+            }
+            .lg\:col-span-1 {
+                grid-column: span 1;
+                min-width: 280px;
+            }
+        }
+
+        /* Fix pour le panneau des résultats - largeur minimale */
+        .lg\:col-span-1 .glass-effect {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        /* Fix pour les valeurs dans le panneau des résultats */
+        #results .flex.justify-between span {
+            min-width: 0;
+        }
+        #results .flex.justify-between span:first-child {
+            flex-shrink: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #results .flex.justify-between span:last-child {
+            flex-shrink: 0;
+            margin-left: 0.5rem;
+        }
+
+        /* Fix pour les grilles de stats en 3 colonnes */
+        .grid.grid-cols-3 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
         .theme-toggle {
             position: fixed;
@@ -1279,16 +1830,19 @@
 
     <div class="container mx-auto max-w-6xl">
         <!-- Header -->
-        <div class="text-center mb-8 mt-4">
-            <!-- Logo Ced-IT -->
-            <div class="mb-6 flex justify-center">
-                <img src="images/logo-ced-it.png" alt="Ced-IT Logo" class="h-24 w-auto drop-shadow-lg logo-float">
-            </div>
+        <div class="mb-8 mt-4">
+            <!-- Logo + Titre -->
+            <div class="flex items-center justify-center gap-6 mb-6 flex-wrap">
+                <!-- Logo Ced-IT -->
+                <img src="images/Ced-it-No background.png" alt="Ced-IT Logo" class="h-32 md:h-40 w-auto drop-shadow-lg logo-float">
 
-            <h1 class="text-5xl font-bold mb-3 header-title">
-                <i class="fas fa-cube mr-3"></i>Calculateur d'Impression 3D
-            </h1>
-            <p class="text-lg" style="color: var(--text-secondary);">Calculez précisément le coût de vos impressions 3D</p>
+                <div class="text-center md:text-left">
+                    <h1 class="text-4xl md:text-5xl font-bold mb-3 header-title">
+                        Calculateur d'Impression 3D
+                    </h1>
+                    <p class="text-lg" style="color: var(--text-secondary);">Calculez précisément le coût de vos impressions 3D</p>
+                </div>
+            </div>
 
             <!-- Quick Stats Bar -->
             <div class="flex justify-center gap-4 mt-6 flex-wrap">
@@ -1311,8 +1865,8 @@
             <!-- Panneau de saisie -->
             <div class="lg:col-span-2">
                 <div class="glass-effect rounded-2xl p-6 mb-6">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-800 flex items-center">
-                        <i class="fas fa-sliders-h mr-3 text-purple-600"></i>Paramètres de l'impression
+                    <h2 class="text-2xl font-bold mb-6 flex items-center section-header" style="color: var(--text-primary);">
+                        <i class="fas fa-sliders-h mr-3" style="color: var(--accent-cyan);"></i>Paramètres de l'impression
                     </h2>
 
                     <!-- Import STL -->
@@ -1321,54 +1875,100 @@
                             <i class="fas fa-file-upload mr-2" style="color: var(--accent-cyan);"></i>Import STL / 3MF (Optionnel)
                         </h3>
                         <div class="upload-zone rounded-xl p-8 text-center" id="uploadZone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-                            <input type="file" id="fileInput" accept=".stl,.3mf" class="hidden" onchange="handleSTLUpload(event)">
-                            <input type="file" id="stlFileInput" accept=".stl,.3mf" class="hidden" onchange="handleSTLUpload(event)">
+                            <input type="file" id="fileInput" accept=".stl,.3mf" class="hidden" multiple>
+                            <input type="file" id="stlFileInput" accept=".stl,.3mf" class="hidden" multiple>
                             <label for="fileInput" class="cursor-pointer">
                                 <div class="upload-icon mb-4">
                                     <i class="fas fa-cloud-upload-alt text-6xl" style="color: var(--accent-cyan);"></i>
                                 </div>
-                                <p class="font-semibold mb-2 text-lg" style="color: var(--text-primary);">Glissez-déposez votre fichier ici</p>
-                                <p class="text-sm mb-4" style="color: var(--text-secondary);">Formats acceptés : STL, 3MF</p>
+                                <p class="font-semibold mb-2 text-lg" style="color: var(--text-primary);">Glissez-déposez vos fichiers ici</p>
+                                <p class="text-sm mb-4" style="color: var(--text-secondary);">Formats acceptés : STL, 3MF (plusieurs fichiers possibles)</p>
                                 <button type="button" onclick="document.getElementById('fileInput').click()" class="btn-ced text-white px-8 py-3 rounded-xl transition font-semibold" style="background: var(--accent-gradient);">
                                     <i class="fas fa-folder-open mr-2"></i>Parcourir les fichiers
                                 </button>
                             </label>
                             <div id="stlInfo" class="mt-4 hidden">
-                                <div class="bg-green-50 border border-green-200 rounded-lg p-3 text-left">
-                                    <p class="text-sm text-gray-700"><strong>Fichier :</strong> <span id="stlFileName"></span></p>
-                                    <p class="text-sm text-gray-700"><strong>Volume estimé :</strong> <span id="stlVolume"></span> cm³</p>
-                                    <p class="text-sm text-gray-700"><strong>Poids estimé :</strong> <span id="stlWeight"></span> g</p>
-                                    <p class="text-sm text-gray-700"><strong>Temps estimé :</strong> <span id="stlTime"></span></p>
-                                    <button onclick="clearSTL()" class="mt-2 text-red-500 hover:text-red-700 text-sm">
-                                        <i class="fas fa-times mr-1"></i>Supprimer
-                                    </button>
+                                <!-- Totaux -->
+                                <div class="rounded-lg p-3 mb-3 text-left" style="background: rgba(0, 212, 255, 0.15); border: 1px solid rgba(0, 212, 255, 0.4);">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <p class="text-sm font-semibold" style="color: var(--accent-cyan);"><i class="fas fa-layer-group mr-1"></i>Récapitulatif (<span id="partsCount">0</span> pièce(s))</p>
+                                        <button onclick="clearAllParts()" class="text-xs px-2 py-1 rounded" style="background: rgba(255, 71, 87, 0.2); color: #ff4757;">
+                                            <i class="fas fa-trash mr-1"></i>Tout supprimer
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2 text-sm">
+                                        <div><strong style="color: #22c55e;">Volume total :</strong> <span id="totalVolume">0</span> cm³</div>
+                                        <div><strong style="color: #22c55e;">Poids total :</strong> <span id="totalWeight">0</span> g</div>
+                                        <div><strong style="color: #22c55e;">Temps total :</strong> <span id="totalTime">-</span></div>
+                                    </div>
                                 </div>
-                                
+                                <!-- Liste des pièces -->
+                                <div id="partsList" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                                <!-- Template pour une pièce (hidden) -->
+                                <template id="partTemplate">
+                                    <div class="part-item rounded-lg p-3 text-left" style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.4);">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-1">
+                                                <p class="text-sm font-semibold" style="color: var(--text-primary);"><i class="fas fa-cube mr-1" style="color: #22c55e;"></i><span class="part-name"></span></p>
+                                                <div class="grid grid-cols-3 gap-2 text-xs mt-1" style="color: var(--text-secondary);">
+                                                    <span>Vol: <span class="part-volume"></span> cm³</span>
+                                                    <span>Poids: <span class="part-weight"></span> g</span>
+                                                    <span>Qté: <input type="number" class="part-quantity w-12 px-1 rounded text-center" value="1" min="1" max="100" style="background: rgba(255,255,255,0.1);"></span>
+                                                </div>
+                                            </div>
+                                            <button class="remove-part text-xs px-2 py-1 rounded ml-2" style="color: #ff4757;" title="Supprimer cette pièce">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Visualisation 3D du modèle -->
+                                <div id="stl3DContainer" class="mt-3 rounded-lg overflow-hidden" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid rgba(0, 102, 255, 0.3);">
+                                    <div class="flex items-center justify-between px-3 py-2" style="background: rgba(0, 102, 255, 0.15); border-bottom: 1px solid rgba(0, 102, 255, 0.3);">
+                                        <p class="text-xs font-semibold" style="color: var(--accent-cyan);">
+                                            <i class="fas fa-cube mr-1"></i>Aperçu 3D
+                                        </p>
+                                        <div class="flex gap-2">
+                                            <button onclick="resetCamera()" class="text-xs px-2 py-1 rounded" style="background: rgba(255,255,255,0.1); color: var(--text-secondary);" title="Réinitialiser la vue">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
+                                            <button onclick="toggleAutoRotate()" class="text-xs px-2 py-1 rounded" style="background: rgba(255,255,255,0.1); color: var(--text-secondary);" title="Rotation automatique">
+                                                <i class="fas fa-redo" id="autoRotateIcon"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <canvas id="stl3DCanvas" style="width: 100%; height: 200px; display: block; cursor: grab;"></canvas>
+                                    <p class="text-xs text-center py-1" style="color: var(--text-secondary); background: rgba(0,0,0,0.2);">
+                                        <i class="fas fa-mouse-pointer mr-1"></i>Cliquer-glisser pour pivoter • Molette pour zoomer
+                                    </p>
+                                </div>
+
                                 <!-- Paramètres d'estimation du temps -->
-                                <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <p class="text-xs font-semibold text-gray-700 mb-2">⚙️ Paramètres d'impression</p>
+                                <div class="mt-3 rounded-lg p-3" style="background: rgba(0, 102, 255, 0.15); border: 1px solid rgba(0, 102, 255, 0.4);">
+                                    <p class="text-xs font-semibold mb-2" style="color: var(--accent-cyan);">⚙️ Paramètres d'impression</p>
                                     <div class="grid grid-cols-2 gap-2 text-xs">
                                         <div>
-                                            <label class="text-gray-600">Hauteur couche (mm)</label>
-                                            <input type="number" id="layerHeight" value="0.2" step="0.05" min="0.05" max="0.4" 
-                                                   class="w-full px-2 py-1 border border-gray-300 rounded text-xs" 
+                                            <label style="color: var(--text-secondary);">Hauteur couche (mm)</label>
+                                            <input type="number" id="layerHeight" value="0.2" step="0.05" min="0.05" max="0.4"
+                                                   class="w-full px-2 py-1 rounded text-xs"
                                                    onchange="if(typeof updateTimeEstimate === 'function') updateTimeEstimate()">
                                         </div>
                                         <div>
-                                            <label class="text-gray-600">Vitesse (mm/s)</label>
-                                            <input type="number" id="printSpeed" value="50" step="5" min="10" max="150" 
-                                                   class="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                                            <label style="color: var(--text-secondary);">Vitesse (mm/s)</label>
+                                            <input type="number" id="printSpeed" value="50" step="5" min="10" max="150"
+                                                   class="w-full px-2 py-1 rounded text-xs"
                                                    onchange="if(typeof updateTimeEstimate === 'function') updateTimeEstimate()">
                                         </div>
                                         <div>
-                                            <label class="text-gray-600">Remplissage (%)</label>
-                                            <input type="number" id="infillDensity" value="20" step="5" min="0" max="100" 
-                                                   class="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                                            <label style="color: var(--text-secondary);">Remplissage (%)</label>
+                                            <input type="number" id="infillDensity" value="20" step="5" min="0" max="100"
+                                                   class="w-full px-2 py-1 rounded text-xs"
                                                    onchange="if(typeof updateTimeEstimate === 'function') updateTimeEstimate()">
                                         </div>
                                         <div>
-                                            <label class="text-gray-600">Supports</label>
-                                            <select id="supportsEnabled" class="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                                            <label style="color: var(--text-secondary);">Supports</label>
+                                            <select id="supportsEnabled" class="w-full px-2 py-1 rounded text-xs"
                                                     onchange="if(typeof updateTimeEstimate === 'function') updateTimeEstimate()">
                                                 <option value="false">Non</option>
                                                 <option value="true">Oui</option>
@@ -1382,8 +1982,8 @@
 
                     <!-- Informations sur le filament -->
                     <div class="mb-6">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center">
-                            <i class="fas fa-scroll mr-2 text-purple-500"></i>Filament
+                        <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
+                            <i class="fas fa-scroll mr-2" style="color: var(--accent-cyan);"></i>Filament
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -1440,8 +2040,8 @@
 
                     <!-- Temps d'impression -->
                     <div class="mb-6">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center">
-                            <i class="fas fa-clock mr-2 text-purple-500"></i>Durée
+                        <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
+                            <i class="fas fa-clock mr-2" style="color: #ffd700;"></i>Durée
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
@@ -1467,8 +2067,8 @@
 
                     <!-- Coûts d'exploitation -->
                     <div class="mb-6">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center">
-                            <i class="fas fa-bolt mr-2 text-purple-500"></i>Coûts d'exploitation
+                        <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
+                            <i class="fas fa-bolt mr-2" style="color: #ffd700;"></i>Coûts d'exploitation
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -1578,8 +2178,8 @@
 
                     <!-- Préréglage Bambu Lab A1 -->
                     <div class="mb-6">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700 flex items-center">
-                            <i class="fas fa-print mr-2 text-purple-500"></i>Imprimante
+                        <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
+                            <i class="fas fa-print mr-2" style="color: #0066ff;"></i>Imprimante
                         </h3>
                         <div class="flex justify-center">
                             <button type="button" onclick="loadPreset('bambu-a1')" class="preset-btn p-4 rounded-lg font-semibold transition shadow-md w-full md:w-auto" style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--border-color); color: var(--accent-cyan);">
@@ -1635,7 +2235,7 @@
                         </div>
 
                         <!-- Détails des coûts -->
-                        <div class="bg-white rounded-xl p-4 space-y-3">
+                        <div class="rounded-xl p-4 space-y-3" style="background: var(--bg-card); border: 1px solid var(--border-color);">
                             <h3 class="font-semibold mb-3 pb-2" style="color: var(--text-primary); border-bottom: 1px solid var(--border-color);">
                                 <i class="fas fa-chart-pie mr-2" style="color: var(--accent-cyan);"></i>Détails des coûts
                             </h3>
@@ -1707,9 +2307,9 @@
                         </div>
 
                         <!-- Prix de vente suggéré -->
-                        <div class="rounded-xl p-4" style="background: rgba(0, 212, 255, 0.1); border: 2px solid rgba(0, 212, 255, 0.4);">
+                        <div class="rounded-xl p-4 selling-price-card" style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%); border: 2px solid rgba(0, 212, 255, 0.4);">
                             <div class="text-sm font-medium mb-2" style="color: var(--accent-cyan);">PRIX DE VENTE SUGGÉRÉ</div>
-                            <div class="text-3xl font-bold" id="sellingPrice" style="color: var(--accent-cyan);">0.00 €</div>
+                            <div class="text-3xl font-bold" id="sellingPrice" style="background: linear-gradient(90deg, #00d4ff, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">0.00 €</div>
                             <div class="text-xs mt-1" style="color: var(--accent-cyan-dark);">avec marge bénéficiaire</div>
                         </div>
 
@@ -1717,22 +2317,22 @@
                         <div class="grid grid-cols-3 gap-2 text-sm">
                             <div class="stat-card text-center">
                                 <div class="text-xs mb-1" style="color: var(--text-muted);">€/gramme</div>
-                                <div class="font-bold text-lg" id="costPerGram" style="color: var(--accent-cyan);">0.00</div>
+                                <div class="font-bold text-lg" id="costPerGram" style="color: #00d4ff;">0.00 €</div>
                             </div>
                             <div class="stat-card text-center">
                                 <div class="text-xs mb-1" style="color: var(--text-muted);">€/heure</div>
-                                <div class="font-bold text-lg" id="costPerHour" style="color: var(--accent-cyan);">0.00</div>
+                                <div class="font-bold text-lg" id="costPerHour" style="color: #8b5cf6;">0.00 €</div>
                             </div>
                             <div class="stat-card text-center">
                                 <div class="text-xs mb-1" style="color: var(--text-muted);">Volume</div>
-                                <div class="font-bold text-lg" id="volume" style="color: var(--accent-cyan);">0.00</div>
+                                <div class="font-bold text-lg" id="volume" style="color: #14b8a6;">0.00</div>
                                 <div class="text-xs" style="color: var(--text-muted);">cm³</div>
                             </div>
                         </div>
 
                         <!-- Graphique de répartition -->
-                        <div class="bg-white rounded-xl p-4">
-                            <h3 class="font-semibold text-gray-700 mb-3 text-center">Répartition des coûts</h3>
+                        <div class="rounded-xl p-4" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                            <h3 class="font-semibold mb-3 text-center" style="color: var(--text-primary);">Répartition des coûts</h3>
                             <div style="height: 250px;">
                                 <canvas id="costChart"></canvas>
                             </div>
@@ -1817,7 +2417,7 @@
             <div class="glass-effect rounded-2xl p-6">
                 <div class="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
-                        <img src="images/logo-ced-it.png" alt="Ced-IT" class="h-10 w-auto">
+                        <img src="images/Ced-it-No background.png" alt="Ced-IT" class="h-10 w-auto">
                         <div>
                             <p class="font-semibold" style="color: var(--accent-cyan);">Ced-IT</p>
                             <p class="text-xs" style="color: var(--text-muted);">Solutions d'impression 3D</p>
@@ -1841,6 +2441,266 @@
         })();
     </script>
 
-    <script src="js/calculator.js"></script>
+    <script src="js/calculator.js?v=2"></script>
+
+    <!-- Module Three.js pour la visualisation 3D -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Variables globales pour le rendu 3D
+        let scene, camera, renderer, controls, currentMesh;
+        let animationId = null;
+        let autoRotate = true;
+
+        // Initialisation de la scène 3D
+        function initScene() {
+            const canvas = document.getElementById('stl3DCanvas');
+            if (!canvas) return;
+
+            // Scène
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+
+            // Caméra
+            const container = canvas.parentElement;
+            const aspect = container.clientWidth / 200;
+            camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 10000);
+            camera.position.set(0, 0, 100);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(container.clientWidth, 200);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // Contrôles orbite
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = autoRotate;
+            controls.autoRotateSpeed = 2;
+
+            // Éclairage
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            const directionalLight2 = new THREE.DirectionalLight(0x00aaff, 0.4);
+            directionalLight2.position.set(-1, -1, -1);
+            scene.add(directionalLight2);
+
+            // Grille (optionnelle)
+            const gridHelper = new THREE.GridHelper(100, 10, 0x444444, 0x333333);
+            gridHelper.rotation.x = Math.PI / 2;
+            scene.add(gridHelper);
+
+            // Animation loop
+            function animate() {
+                animationId = requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            // Gestion du redimensionnement
+            const resizeObserver = new ResizeObserver(() => {
+                const width = container.clientWidth;
+                const height = 200;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            });
+            resizeObserver.observe(container);
+
+            console.log('✅ Scène 3D initialisée');
+        }
+
+        // Fonction pour afficher un modèle STL à partir des données binaires
+        window.display3DModel = function(arrayBuffer, isBinary = true) {
+            if (!scene) {
+                initScene();
+            }
+
+            // Supprimer l'ancien mesh s'il existe
+            if (currentMesh) {
+                scene.remove(currentMesh);
+                currentMesh.geometry.dispose();
+                currentMesh.material.dispose();
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+
+            if (isBinary && arrayBuffer.byteLength > 84) {
+                const view = new DataView(arrayBuffer);
+                const numTriangles = view.getUint32(80, true);
+
+                for (let i = 0; i < numTriangles; i++) {
+                    const offset = 84 + i * 50;
+
+                    // Sauter la normale (12 bytes) et lire les 3 vertices
+                    for (let v = 0; v < 3; v++) {
+                        const vOffset = offset + 12 + v * 12;
+                        if (vOffset + 12 <= arrayBuffer.byteLength) {
+                            vertices.push(
+                                view.getFloat32(vOffset, true),
+                                view.getFloat32(vOffset + 4, true),
+                                view.getFloat32(vOffset + 8, true)
+                            );
+                        }
+                    }
+                }
+            } else {
+                // STL ASCII - parser le texte
+                const text = new TextDecoder().decode(arrayBuffer);
+                const vertexRegex = /vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/g;
+                let match;
+                while ((match = vertexRegex.exec(text)) !== null) {
+                    vertices.push(
+                        parseFloat(match[1]),
+                        parseFloat(match[2]),
+                        parseFloat(match[3])
+                    );
+                }
+            }
+
+            if (vertices.length === 0) {
+                console.warn('⚠️ Aucun vertex trouvé dans le fichier');
+                return;
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.computeVertexNormals();
+            geometry.center();
+
+            // Matériau avec effet métallique
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x00aaff,
+                specular: 0x444444,
+                shininess: 100,
+                flatShading: false,
+                side: THREE.DoubleSide
+            });
+
+            currentMesh = new THREE.Mesh(geometry, material);
+            scene.add(currentMesh);
+
+            // Ajuster la caméra pour voir tout le modèle
+            const box = new THREE.Box3().setFromObject(currentMesh);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = maxDim / (2 * Math.tan(fov / 2));
+            cameraZ *= 1.5; // Ajouter un peu de marge
+
+            camera.position.set(cameraZ * 0.5, cameraZ * 0.5, cameraZ);
+            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, 0);
+            controls.update();
+
+            console.log('✅ Modèle 3D affiché avec', vertices.length / 3, 'vertices');
+        };
+
+        // Fonction pour afficher un modèle 3MF
+        window.display3DMFModel = function(vertices3MF) {
+            if (!scene) {
+                initScene();
+            }
+
+            if (currentMesh) {
+                scene.remove(currentMesh);
+                currentMesh.geometry.dispose();
+                currentMesh.material.dispose();
+            }
+
+            if (!vertices3MF || vertices3MF.length === 0) {
+                console.warn('⚠️ Aucun vertex 3MF fourni');
+                return;
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices3MF, 3));
+            geometry.computeVertexNormals();
+            geometry.center();
+
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x00aaff,
+                specular: 0x444444,
+                shininess: 100,
+                flatShading: false,
+                side: THREE.DoubleSide
+            });
+
+            currentMesh = new THREE.Mesh(geometry, material);
+            scene.add(currentMesh);
+
+            // Ajuster la caméra
+            const box = new THREE.Box3().setFromObject(currentMesh);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = maxDim / (2 * Math.tan(fov / 2));
+            cameraZ *= 1.5;
+
+            camera.position.set(cameraZ * 0.5, cameraZ * 0.5, cameraZ);
+            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, 0);
+            controls.update();
+
+            console.log('✅ Modèle 3MF affiché');
+        };
+
+        // Réinitialiser la caméra
+        window.resetCamera = function() {
+            if (!currentMesh || !camera || !controls) return;
+
+            const box = new THREE.Box3().setFromObject(currentMesh);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = maxDim / (2 * Math.tan(fov / 2));
+            cameraZ *= 1.5;
+
+            camera.position.set(cameraZ * 0.5, cameraZ * 0.5, cameraZ);
+            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        };
+
+        // Toggle rotation automatique
+        window.toggleAutoRotate = function() {
+            if (!controls) return;
+            autoRotate = !autoRotate;
+            controls.autoRotate = autoRotate;
+
+            const icon = document.getElementById('autoRotateIcon');
+            if (icon) {
+                icon.style.color = autoRotate ? 'var(--accent-cyan)' : 'var(--text-secondary)';
+            }
+        };
+
+        // Nettoyer la scène
+        window.clear3DScene = function() {
+            if (currentMesh) {
+                scene.remove(currentMesh);
+                currentMesh.geometry.dispose();
+                currentMesh.material.dispose();
+                currentMesh = null;
+            }
+        };
+
+        // Initialiser au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            // La scène sera initialisée au premier chargement de fichier
+            console.log('🎮 Module 3D prêt');
+        });
+    </script>
 </body>
 </html>

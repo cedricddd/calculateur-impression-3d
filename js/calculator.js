@@ -512,127 +512,372 @@ function clearHistory() {
     }
 }
 
-// Export PDF
+// Fonction pour charger une image en base64
+async function loadImageAsBase64(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = reject;
+        img.src = url;
+    });
+}
+
+// Export PDF - Design Ced-IT Professionnel
 async function exportPDF() {
-    showNotification('Génération du PDF en cours...', 'info');
-    
+    showNotification('Génération du devis PDF en cours...', 'info');
+
     try {
         // Sauvegarder dans l'historique avant l'export
         saveToHistory();
-        
+
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
-        // Titre
-        doc.setFontSize(20);
-        doc.setTextColor(102, 126, 234);
-        doc.text('Calcul d\'impression 3D', 20, 20);
-        
-        // Date
-        doc.setFontSize(10);
-        doc.setTextColor(100);
+
+        // Charger le logo Ced-IT
+        let logoBase64 = null;
+        try {
+            logoBase64 = await loadImageAsBase64('images/Ced-it-No background.png');
+        } catch (logoError) {
+            console.log('Logo non disponible, utilisation du texte');
+        }
+
+        // Couleurs Ced-IT
+        const cedCyan = [0, 212, 255];
+        const cedDarkBlue = [10, 22, 40];
+        const cedSecondary = [13, 31, 53];
+        const cedCard = [15, 37, 65];
+        const white = [255, 255, 255];
+        const lightGray = [148, 163, 184];
+        const darkGray = [100, 116, 139];
+
+        // Dimensions
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 15;
+
+        // ==========================================
+        // EN-TÊTE AVEC LOGO ET BANDE COLORÉE
+        // ==========================================
+
+        // Bande d'en-tête bleu foncé
+        doc.setFillColor(...cedDarkBlue);
+        doc.rect(0, 0, pageWidth, 45, 'F');
+
+        // Ligne accent cyan
+        doc.setFillColor(...cedCyan);
+        doc.rect(0, 45, pageWidth, 2, 'F');
+
+        // Logo Ced-IT
+        if (logoBase64) {
+            // Ajouter le logo image
+            doc.addImage(logoBase64, 'PNG', margin, 5, 50, 35);
+        } else {
+            // Fallback: texte stylisé
+            doc.setFontSize(28);
+            doc.setTextColor(...cedCyan);
+            doc.setFont('helvetica', 'bold');
+            doc.text('CED-IT', margin, 25);
+
+            // Sous-titre (seulement avec le texte)
+            doc.setFontSize(10);
+            doc.setTextColor(...lightGray);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Services d\'impression 3D professionnels', margin, 33);
+        }
+
+        // Informations contact à droite
+        doc.setFontSize(9);
+        doc.setTextColor(...white);
+        doc.text('www.ced-it.fr', pageWidth - margin, 18, { align: 'right' });
+        doc.text('contact@ced-it.fr', pageWidth - margin, 25, { align: 'right' });
+        doc.setTextColor(...cedCyan);
+        doc.setFont('helvetica', 'bold');
+
+        // Date du devis
         const date = new Date().toLocaleDateString('fr-FR', {
             day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+            month: 'long',
+            year: 'numeric'
         });
-        doc.text(`Généré le: ${date}`, 20, 28);
-        
-        // Ligne de séparation
-        doc.setDrawColor(200);
-        doc.line(20, 32, 190, 32);
-        
-        // Paramètres
-        doc.setFontSize(14);
-        doc.setTextColor(0);
-        doc.text('Paramètres', 20, 42);
-        
+        doc.text(date, pageWidth - margin, 33, { align: 'right' });
+
+        // ==========================================
+        // TITRE DU DOCUMENT
+        // ==========================================
+
+        let y = 60;
+
+        doc.setFontSize(22);
+        doc.setTextColor(...cedDarkBlue);
+        doc.setFont('helvetica', 'bold');
+        doc.text('DEVIS D\'IMPRESSION 3D', pageWidth / 2, y, { align: 'center' });
+
+        // Numéro de devis
+        y += 10;
         doc.setFontSize(10);
-        let y = 50;
-        
+        doc.setTextColor(...darkGray);
+        doc.setFont('helvetica', 'normal');
+        const devisNum = 'DEV-' + Date.now().toString().slice(-8);
+        doc.text(`Référence : ${devisNum}`, pageWidth / 2, y, { align: 'center' });
+
+        // ==========================================
+        // SECTION PARAMÈTRES DU PROJET
+        // ==========================================
+
+        y += 20;
+
+        // Titre de section avec fond
+        doc.setFillColor(...cedSecondary);
+        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 12, 2, 2, 'F');
+        doc.setFontSize(12);
+        doc.setTextColor(...white);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PARAMÈTRES DU PROJET', margin + 5, y + 2);
+
+        y += 18;
+
+        // Tableau des paramètres
         const params = [
-            ['Type de filament:', document.getElementById('filamentType').value],
-            ['Prix du filament:', document.getElementById('filamentPrice').value + ' €/kg'],
-            ['Poids utilisé:', document.getElementById('filamentWeight').value + ' g'],
-            ['Temps d\'impression:', document.getElementById('totalTime').value],
-            ['Consommation:', document.getElementById('powerConsumption').value + ' W'],
-            ['Prix électricité:', document.getElementById('electricityPrice').value + ' €/kWh']
+            ['Type de matériau', document.getElementById('filamentType').value],
+            ['Prix du filament', document.getElementById('filamentPrice').value + ' €/kg'],
+            ['Poids de filament', document.getElementById('filamentWeight').value + ' g'],
+            ['Temps d\'impression', document.getElementById('totalTime').value],
+            ['Consommation électrique', document.getElementById('powerConsumption').value + ' W'],
+            ['Tarif électricité', document.getElementById('electricityPrice').value + ' €/kWh']
         ];
-        
-        params.forEach(param => {
-            doc.setTextColor(100);
-            doc.text(param[0], 25, y);
-            doc.setTextColor(0);
-            doc.text(param[1], 80, y);
-            y += 7;
-        });
-        
-        // Résultats
-        y += 5;
-        doc.setFontSize(14);
-        doc.setTextColor(0);
-        doc.text('Résultats', 20, y);
-        y += 10;
-        
+
         doc.setFontSize(10);
-        const results = [
-            ['Filament:', document.getElementById('filamentCost').textContent],
-            ['Électricité:', document.getElementById('electricityCost').textContent],
-            ['Amortissement:', document.getElementById('depreciationCost').textContent],
-            ['Maintenance:', document.getElementById('maintenanceCostDisplay').textContent],
-            ['Main-d\'œuvre:', document.getElementById('laborCostDisplay').textContent],
-            ['Échecs:', document.getElementById('failureCost').textContent]
-        ];
-        
-        results.forEach(result => {
-            doc.setTextColor(100);
-            doc.text(result[0], 25, y);
-            doc.setTextColor(0);
-            doc.text(result[1], 80, y);
-            y += 7;
+        const colWidth = (pageWidth - (margin * 2)) / 2;
+
+        params.forEach((param, index) => {
+            // Fond alterné
+            if (index % 2 === 0) {
+                doc.setFillColor(245, 247, 250);
+                doc.rect(margin, y - 4, pageWidth - (margin * 2), 8, 'F');
+            }
+
+            doc.setTextColor(...darkGray);
+            doc.setFont('helvetica', 'normal');
+            doc.text(param[0], margin + 5, y);
+
+            doc.setTextColor(...cedDarkBlue);
+            doc.setFont('helvetica', 'bold');
+            doc.text(param[1], pageWidth - margin - 5, y, { align: 'right' });
+
+            y += 8;
         });
-        
-        // Ligne de séparation
-        y += 3;
-        doc.setDrawColor(200);
-        doc.line(25, y, 100, y);
-        y += 10;
-        
-        // Coût total
-        doc.setFontSize(12);
-        doc.setTextColor(102, 126, 234);
-        doc.text('COÛT TOTAL:', 25, y);
-        doc.setFontSize(16);
-        doc.text(document.getElementById('totalCost').textContent, 80, y);
-        
+
+        // ==========================================
+        // SECTION DÉCOMPOSITION DES COÛTS
+        // ==========================================
+
         y += 12;
+
+        // Titre de section
+        doc.setFillColor(...cedSecondary);
+        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 12, 2, 2, 'F');
         doc.setFontSize(12);
-        doc.setTextColor(16, 185, 129);
-        doc.text('PRIX DE VENTE SUGGÉRÉ:', 25, y);
-        doc.setFontSize(16);
-        doc.text(document.getElementById('sellingPrice').textContent, 80, y);
-        
-        // Statistiques
-        y += 15;
+        doc.setTextColor(...white);
+        doc.setFont('helvetica', 'bold');
+        doc.text('DÉCOMPOSITION DES COÛTS', margin + 5, y + 2);
+
+        y += 18;
+
+        // En-tête du tableau des coûts
+        doc.setFillColor(...cedCard);
+        doc.rect(margin, y - 5, pageWidth - (margin * 2), 8, 'F');
+        doc.setFontSize(9);
+        doc.setTextColor(...white);
+        doc.setFont('helvetica', 'bold');
+        doc.text('POSTE DE COÛT', margin + 5, y);
+        doc.text('MONTANT HT', pageWidth - margin - 5, y, { align: 'right' });
+
+        y += 10;
+
+        const costs = [
+            ['Matière première (filament)', document.getElementById('filamentCost').textContent],
+            ['Énergie électrique', document.getElementById('electricityCost').textContent],
+            ['Amortissement machine', document.getElementById('depreciationCost').textContent],
+            ['Maintenance équipement', document.getElementById('maintenanceCostDisplay').textContent],
+            ['Main-d\'œuvre', document.getElementById('laborCostDisplay').textContent.split('(')[0].trim()],
+            ['Provision pour échecs', document.getElementById('failureCost').textContent]
+        ];
+
         doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text('Coût par gramme: ' + document.getElementById('costPerGram').textContent, 25, y);
-        y += 6;
-        doc.text('Coût par heure: ' + document.getElementById('costPerHour').textContent, 25, y);
-        y += 6;
-        doc.text('Volume: ' + document.getElementById('volume').textContent, 25, y);
-        
-        // Footer
+        costs.forEach((cost, index) => {
+            // Fond alterné
+            if (index % 2 === 0) {
+                doc.setFillColor(250, 251, 252);
+                doc.rect(margin, y - 4, pageWidth - (margin * 2), 8, 'F');
+            }
+
+            doc.setTextColor(60, 60, 60);
+            doc.setFont('helvetica', 'normal');
+            doc.text(cost[0], margin + 5, y);
+
+            doc.setTextColor(...cedDarkBlue);
+            doc.text(cost[1], pageWidth - margin - 5, y, { align: 'right' });
+
+            y += 8;
+        });
+
+        // ==========================================
+        // TOTAUX AVEC MISE EN VALEUR
+        // ==========================================
+
+        y += 5;
+
+        // Ligne de séparation
+        doc.setDrawColor(...cedCyan);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y, pageWidth - margin, y);
+
+        y += 12;
+
+        // Coût de revient
+        doc.setFillColor(240, 253, 255);
+        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 14, 2, 2, 'F');
+        doc.setDrawColor(...cedCyan);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 14, 2, 2, 'S');
+
+        doc.setFontSize(12);
+        doc.setTextColor(...cedDarkBlue);
+        doc.setFont('helvetica', 'bold');
+        doc.text('COÛT DE REVIENT', margin + 5, y + 2);
+
+        doc.setFontSize(14);
+        doc.setTextColor(...cedCyan);
+        doc.text(document.getElementById('totalCost').textContent, pageWidth - margin - 5, y + 2, { align: 'right' });
+
+        y += 22;
+
+        // Prix de vente suggéré (mise en valeur forte)
+        doc.setFillColor(...cedCyan);
+        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 18, 3, 3, 'F');
+
+        doc.setFontSize(13);
+        doc.setTextColor(...white);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PRIX DE VENTE CONSEILLÉ', margin + 5, y + 4);
+
+        doc.setFontSize(18);
+        doc.text(document.getElementById('sellingPrice').textContent, pageWidth - margin - 5, y + 4, { align: 'right' });
+
+        // ==========================================
+        // STATISTIQUES COMPLÉMENTAIRES
+        // ==========================================
+
+        y += 30;
+
+        // Titre de section
+        doc.setFillColor(...cedSecondary);
+        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 12, 2, 2, 'F');
+        doc.setFontSize(12);
+        doc.setTextColor(...white);
+        doc.setFont('helvetica', 'bold');
+        doc.text('INDICATEURS', margin + 5, y + 2);
+
+        y += 18;
+
+        // Statistiques en colonnes
+        const stats = [
+            ['Coût / gramme', document.getElementById('costPerGram').textContent],
+            ['Coût / heure', document.getElementById('costPerHour').textContent],
+            ['Volume estimé', document.getElementById('volume').textContent]
+        ];
+
+        const statWidth = (pageWidth - (margin * 2) - 20) / 3;
+
+        stats.forEach((stat, index) => {
+            const x = margin + (index * (statWidth + 10));
+
+            // Boîte de statistique
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.roundedRect(x, y - 4, statWidth, 25, 2, 2, 'FD');
+
+            doc.setFontSize(8);
+            doc.setTextColor(...darkGray);
+            doc.setFont('helvetica', 'normal');
+            doc.text(stat[0], x + statWidth / 2, y + 3, { align: 'center' });
+
+            doc.setFontSize(12);
+            doc.setTextColor(...cedDarkBlue);
+            doc.setFont('helvetica', 'bold');
+            doc.text(stat[1], x + statWidth / 2, y + 14, { align: 'center' });
+        });
+
+        // ==========================================
+        // CAPTURE DU GRAPHIQUE
+        // ==========================================
+
+        try {
+            const chartCanvas = document.getElementById('costChart');
+            if (chartCanvas && costChart) {
+                const chartImage = chartCanvas.toDataURL('image/png', 1.0);
+
+                y += 40;
+
+                // Titre section graphique
+                doc.setFillColor(...cedSecondary);
+                doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 12, 2, 2, 'F');
+                doc.setFontSize(12);
+                doc.setTextColor(...white);
+                doc.setFont('helvetica', 'bold');
+                doc.text('RÉPARTITION DES COÛTS', margin + 5, y + 2);
+
+                y += 15;
+
+                // Ajouter le graphique centré
+                const chartWidth = 80;
+                const chartHeight = 80;
+                const chartX = (pageWidth - chartWidth) / 2;
+
+                doc.addImage(chartImage, 'PNG', chartX, y, chartWidth, chartHeight);
+            }
+        } catch (chartError) {
+            console.log('Graphique non disponible pour le PDF:', chartError);
+        }
+
+        // ==========================================
+        // PIED DE PAGE
+        // ==========================================
+
+        // Bande de pied de page
+        doc.setFillColor(...cedDarkBlue);
+        doc.rect(0, pageHeight - 25, pageWidth, 25, 'F');
+
+        // Ligne accent
+        doc.setFillColor(...cedCyan);
+        doc.rect(0, pageHeight - 25, pageWidth, 1, 'F');
+
+        // Texte du pied de page
         doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text('Calculateur d\'impression 3D - Tous les coûts sont estimatifs', 20, 285);
-        
-        // Sauvegarder
-        doc.save(`calcul-3d-${Date.now()}.pdf`);
-        showNotification('PDF généré avec succès!', 'success');
-        
+        doc.setTextColor(...lightGray);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Ce devis est établi à titre indicatif. Les prix peuvent varier selon la complexité réelle du projet.', pageWidth / 2, pageHeight - 16, { align: 'center' });
+
+        doc.setTextColor(...cedCyan);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Ced-IT © ' + new Date().getFullYear() + ' - Impression 3D sur mesure', pageWidth / 2, pageHeight - 8, { align: 'center' });
+
+        // ==========================================
+        // SAUVEGARDE DU PDF
+        // ==========================================
+
+        const fileName = `Devis-CedIT-${devisNum}.pdf`;
+        doc.save(fileName);
+        showNotification('Devis PDF généré avec succès !', 'success');
+
     } catch (error) {
         console.error('Erreur lors de la génération du PDF:', error);
         showNotification('Erreur lors de la génération du PDF', 'error');
@@ -761,28 +1006,50 @@ if (document.readyState === 'loading') {
 
 let stlData = null;
 
-// Fonction pour gérer l'upload du fichier STL
+// Fonction pour gérer l'upload du fichier STL ou 3MF
 async function handleSTLUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
-    if (!file.name.toLowerCase().endsWith('.stl')) {
-        showNotification('Veuillez sélectionner un fichier STL', 'error');
+
+    const fileName = file.name.toLowerCase();
+    const isSTL = fileName.endsWith('.stl');
+    const is3MF = fileName.endsWith('.3mf');
+
+    if (!isSTL && !is3MF) {
+        showNotification('Veuillez sélectionner un fichier STL ou 3MF', 'error');
         return;
     }
-    
+
+    // Si c'est un fichier 3MF, utiliser la fonction dédiée dans index.html
+    if (is3MF) {
+        showNotification('Analyse du fichier 3MF en cours...', 'info');
+        try {
+            if (typeof window.handle3MFFile === 'function') {
+                await window.handle3MFFile(file);
+                showNotification('Fichier 3MF analysé avec succès !', 'success');
+            } else {
+                showNotification('Fonction handle3MFFile non disponible', 'error');
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement du fichier 3MF:', error);
+            showNotification('Erreur lors de l\'analyse du fichier 3MF: ' + error.message, 'error');
+        }
+        return;
+    }
+
+    // Traitement des fichiers STL
     showNotification('Analyse du fichier STL en cours...', 'info');
-    
+
     try {
         const reader = new FileReader();
-        
+
         reader.onload = function(e) {
             const contents = e.target.result;
             analyzeSTL(contents, file.name);
         };
-        
+
         reader.readAsArrayBuffer(file);
-        
+
     } catch (error) {
         console.error('Erreur lors du chargement du fichier STL:', error);
         showNotification('Erreur lors de l\'analyse du fichier STL', 'error');
