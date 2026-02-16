@@ -1822,6 +1822,12 @@
     </style>
 </head>
 <body class="p-4">
+    <!-- Auth overlay — affiché immédiatement, supprimé par js/auth.js après vérification -->
+    <div id="auth-overlay">
+        <div class="auth-spinner"></div>
+        <p class="auth-overlay-text">Vérification de l'accès…</p>
+    </div>
+
     <!-- Toggle Mode Sombre -->
     <button type="button" onclick="toggleTheme()" class="theme-toggle glass-effect px-4 py-2 rounded-full font-semibold shadow-lg hover:shadow-xl transition" style="color: var(--accent-cyan);">
         <i class="fas fa-moon" id="themeIcon"></i>
@@ -2441,6 +2447,7 @@
         })();
     </script>
 
+    <script src="js/auth.js"></script>
     <script src="js/calculator.js?v=2"></script>
 
     <!-- Module Three.js pour la visualisation 3D -->
