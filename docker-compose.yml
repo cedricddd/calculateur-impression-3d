@@ -2,9 +2,6 @@ version: '3.8'
 
 services:
   calculateur-3d:
-    # Nom du conteneur
-    container_name: calculateur-impression-3d
-    
     # Image à construire depuis le Dockerfile
     build:
       context: .
