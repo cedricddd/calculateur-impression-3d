@@ -1,6 +1,93 @@
 // Calculateur de prix d'impression 3D
 // Gère tous les calculs et mises à jour de l'interface
 
+// ============================================================
+// DONNÉES ENTREPRISE – identiques au module devis Ced-IT
+// ============================================================
+const COMPANY = {
+    name:         'CED-IT',
+    address:      'Rue Thier May 42',
+    city:         '4910 Theux',
+    phone:        '0495 20 92 78',
+    email:        'cedric@ced-it.be',
+    website:      'www.ced-it.com',
+    vat:          'BE 1019.855.327',
+    iban:         'BE84 7320 8002 5859',
+    bank:         'CBC',
+    manager:      'Cédric',
+    managerTitle: 'Gérant CED-IT',
+};
+
+// ============================================================
+// SSO – Token SaaS + profil entreprise dynamique
+// ============================================================
+const SAAS_URL = 'https://saas.ced-it.be';
+const APP_SLUG  = 'calculateur-3d';
+const TOKEN_KEY = 'ced-app-token';
+
+/**
+ * Capture le token SSO depuis l'URL (?token=…) et le stocke en localStorage.
+ * Nettoie l'URL immédiatement pour éviter qu'il reste visible.
+ */
+function captureSsoToken() {
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('token');
+    if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+        params.delete('token');
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+    }
+}
+
+/**
+ * Récupère le profil entreprise depuis le SaaS.
+ * Retourne les données du profil si disponibles, sinon le fallback COMPANY.
+ */
+async function fetchCompanyProfile() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return COMPANY;
+
+    try {
+        const res = await fetch(`${SAAS_URL}/api/apps/${APP_SLUG}/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.status === 401) {
+            // Token expiré – on le supprime
+            localStorage.removeItem(TOKEN_KEY);
+            return COMPANY;
+        }
+
+        if (!res.ok) return COMPANY;
+
+        const { profile } = await res.json();
+        if (!profile) return COMPANY;
+
+        return {
+            name:         profile.companyName  || COMPANY.name,
+            address:      profile.address      || COMPANY.address,
+            city:         (profile.postalCode && profile.city)
+                            ? `${profile.postalCode} ${profile.city}`
+                            : (profile.city || COMPANY.city),
+            phone:        profile.phone        || COMPANY.phone,
+            email:        profile.companyEmail || COMPANY.email,
+            website:      profile.website      || COMPANY.website,
+            vat:          profile.vatNumber    || COMPANY.vat,
+            iban:         profile.iban         || COMPANY.iban,
+            bank:         profile.bank         || COMPANY.bank,
+            manager:      profile.manager      || COMPANY.manager,
+            managerTitle: profile.managerTitle || COMPANY.managerTitle,
+            logoUrl:      profile.logoPath ? `${SAAS_URL}${profile.logoPath}` : null,
+        };
+    } catch (_) {
+        return COMPANY;
+    }
+}
+
+// Capturer le token SSO dès le chargement du script
+captureSsoToken();
+
 // Valeurs par défaut pour la densité selon le type de filament
 const filamentDensities = {
     'PLA': 1.24,
@@ -26,6 +113,40 @@ const printerPresets = {
 
 // Variable globale pour le graphique
 let costChart = null;
+
+// Clé de stockage pour la comparaison de matériaux
+const COMPARISON_STORAGE_KEY = '3dprintComparisonMaterials';
+
+// Utilitaire debounce pour l'auto-sauvegarde
+function debounce(fn, delay) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+// Auto-sauvegarde silencieuse de la configuration
+const autoSaveConfig = debounce(function() {
+    const config = {
+        filamentType: document.getElementById('filamentType').value,
+        filamentPrice: document.getElementById('filamentPrice').value,
+        filamentWeight: document.getElementById('filamentWeight').value,
+        filamentDensity: document.getElementById('filamentDensity').value,
+        printHours: document.getElementById('printHours').value,
+        printMinutes: document.getElementById('printMinutes').value,
+        powerConsumption: document.getElementById('powerConsumption').value,
+        electricityPrice: document.getElementById('electricityPrice').value,
+        printerCost: document.getElementById('printerCost').value,
+        printerLifespan: document.getElementById('printerLifespan').value,
+        maintenanceCost: document.getElementById('maintenanceCost').value,
+        failureRate: document.getElementById('failureRate').value,
+        profitMargin: document.getElementById('profitMargin').value,
+        laborHours: document.getElementById('laborHours').value,
+        laborCost: document.getElementById('laborCost').value
+    };
+    localStorage.setItem('3dprintCalculatorConfig', JSON.stringify(config));
+}, 800);
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', function() {
@@ -60,15 +181,23 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('printHours').addEventListener('input', updateTotalTime);
     document.getElementById('printMinutes').addEventListener('input', updateTotalTime);
 
+    // Restaurer la configuration sauvegardée (silencieusement)
+    loadConfigSilent();
+
     // Calcul automatique au chargement et lors de changements
     updateTotalTime();
     calculateCost();
     updateHistoryCount();
 
-    // Calcul automatique lors de la modification de n'importe quel champ
+    // Charger les matériaux de comparaison sauvegardés
+    loadComparisonMaterials();
+
+    // Calcul automatique + auto-sauvegarde lors de la modification de n'importe quel champ
     const inputs = document.querySelectorAll('input, select');
     inputs.forEach(input => {
         input.addEventListener('input', calculateCost);
+        input.addEventListener('input', autoSaveConfig);
+        input.addEventListener('change', autoSaveConfig);
     });
 
     // Initialiser le graphique
@@ -288,6 +417,18 @@ function loadConfig() {
         showNotification('Configuration chargée avec succès!', 'success');
     } else {
         showNotification('Aucune configuration sauvegardée trouvée', 'warning');
+    }
+}
+
+// Chargement silencieux au démarrage (sans notification)
+function loadConfigSilent() {
+    const savedConfig = localStorage.getItem('3dprintCalculatorConfig');
+    if (savedConfig) {
+        const config = JSON.parse(savedConfig);
+        Object.keys(config).forEach(key => {
+            const element = document.getElementById(key);
+            if (element) element.value = config[key];
+        });
     }
 }
 
@@ -535,18 +676,30 @@ async function exportPDF() {
     showNotification('Génération du devis PDF en cours...', 'info');
 
     try {
+        // Récupérer les données entreprise depuis le SaaS (ou fallback local)
+        const company = await fetchCompanyProfile();
+
         // Sauvegarder dans l'historique avant l'export
         saveToHistory();
 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        // Charger le logo Ced-IT
+        // Charger le logo : priorité au logo utilisateur, fallback logo Ced-IT
         let logoBase64 = null;
-        try {
-            logoBase64 = await loadImageAsBase64('images/Ced-it-No background.png');
-        } catch (logoError) {
-            console.log('Logo non disponible, utilisation du texte');
+        if (company.logoUrl) {
+            try {
+                logoBase64 = await loadImageAsBase64(company.logoUrl);
+            } catch (_) {
+                // Logo utilisateur inaccessible – on tente le logo Ced-IT
+            }
+        }
+        if (!logoBase64) {
+            try {
+                logoBase64 = await loadImageAsBase64('images/Ced-it-No background.png');
+            } catch (_) {
+                // Pas de logo du tout → fallback texte
+            }
         }
 
         // Couleurs Ced-IT
@@ -584,7 +737,7 @@ async function exportPDF() {
             doc.setFontSize(28);
             doc.setTextColor(...cedCyan);
             doc.setFont('helvetica', 'bold');
-            doc.text('CED-IT', margin, 25);
+            doc.text(company.name, margin, 25);
 
             // Sous-titre (seulement avec le texte)
             doc.setFontSize(10);
@@ -596,8 +749,10 @@ async function exportPDF() {
         // Informations contact à droite
         doc.setFontSize(9);
         doc.setTextColor(...white);
-        doc.text('www.ced-it.fr', pageWidth - margin, 18, { align: 'right' });
-        doc.text('contact@ced-it.fr', pageWidth - margin, 25, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.text(company.website,  pageWidth - margin, 14, { align: 'right' });
+        doc.text(company.email,    pageWidth - margin, 21, { align: 'right' });
+        doc.text(company.phone,    pageWidth - margin, 28, { align: 'right' });
         doc.setTextColor(...cedCyan);
         doc.setFont('helvetica', 'bold');
 
@@ -607,7 +762,7 @@ async function exportPDF() {
             month: 'long',
             year: 'numeric'
         });
-        doc.text(date, pageWidth - margin, 33, { align: 'right' });
+        doc.text(date, pageWidth - margin, 38, { align: 'right' });
 
         // ==========================================
         // TITRE DU DOCUMENT
@@ -629,10 +784,40 @@ async function exportPDF() {
         doc.text(`Référence : ${devisNum}`, pageWidth / 2, y, { align: 'center' });
 
         // ==========================================
+        // BLOC ÉMETTEUR
+        // ==========================================
+
+        y += 16;
+
+        const infoBoxWidth = (pageWidth - margin * 2);
+        doc.setFillColor(240, 248, 255);
+        doc.setDrawColor(...cedCyan);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, y - 4, infoBoxWidth, 28, 2, 2, 'FD');
+
+        // Colonne gauche : nom + adresse
+        doc.setFontSize(10);
+        doc.setTextColor(...cedDarkBlue);
+        doc.setFont('helvetica', 'bold');
+        doc.text(company.name, margin + 5, y + 2);
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 80, 100);
+        doc.text(company.address + ' – ' + company.city, margin + 5, y + 9);
+        doc.text('TVA : ' + company.vat, margin + 5, y + 16);
+
+        // Colonne droite : IBAN + banque + gérant
+        const rightCol = pageWidth - margin - 5;
+        doc.setTextColor(60, 80, 100);
+        doc.text('IBAN : ' + company.iban + ' (' + company.bank + ')', rightCol, y + 2,  { align: 'right' });
+        doc.text(company.manager + ' – ' + company.managerTitle,             rightCol, y + 9,  { align: 'right' });
+
+        // ==========================================
         // SECTION PARAMÈTRES DU PROJET
         // ==========================================
 
-        y += 20;
+        y += 38;
 
         // Titre de section avec fond
         doc.setFillColor(...cedSecondary);
@@ -864,11 +1049,18 @@ async function exportPDF() {
         doc.setFontSize(8);
         doc.setTextColor(...lightGray);
         doc.setFont('helvetica', 'normal');
-        doc.text('Ce devis est établi à titre indicatif. Les prix peuvent varier selon la complexité réelle du projet.', pageWidth / 2, pageHeight - 16, { align: 'center' });
+        doc.text('Ce devis est établi à titre indicatif. Les prix peuvent varier selon la complexité réelle du projet.', pageWidth / 2, pageHeight - 18, { align: 'center' });
+
+        doc.setFontSize(7.5);
+        doc.text(
+            company.address + ' – ' + company.city + '  |  ' + company.phone + '  |  ' + company.email + '  |  TVA ' + company.vat,
+            pageWidth / 2, pageHeight - 12, { align: 'center' }
+        );
 
         doc.setTextColor(...cedCyan);
         doc.setFont('helvetica', 'bold');
-        doc.text('Ced-IT © ' + new Date().getFullYear() + ' - Impression 3D sur mesure', pageWidth / 2, pageHeight - 8, { align: 'center' });
+        doc.setFontSize(8);
+        doc.text(company.name + ' © ' + new Date().getFullYear() + ' – ' + company.website, pageWidth / 2, pageHeight - 5, { align: 'center' });
 
         // ==========================================
         // SAUVEGARDE DU PDF
@@ -1149,6 +1341,7 @@ function clearSTL() {
 // ===========================================
 
 let comparisonMaterials = [];
+let selectedComparisonId = null;
 
 // Fonction pour ajouter un matériau à la comparaison
 function addComparisonMaterial() {
@@ -1195,6 +1388,7 @@ function addComparisonMaterial() {
         id: Date.now()
     });
     
+    saveComparisonMaterials();
     updateComparisonTable();
     showNotification(`${currentFilament.type} ajouté à la comparaison`, 'success');
 }
@@ -1212,8 +1406,17 @@ function updateComparisonTable() {
     
     emptyMsg.classList.add('hidden');
     
-    tbody.innerHTML = comparisonMaterials.map(material => `
-        <tr class="border-b border-gray-200 hover:bg-gray-50 transition">
+    tbody.innerHTML = comparisonMaterials.map(material => {
+        const isSelected = selectedComparisonId === material.id;
+        return `
+        <tr class="border-b border-gray-200 hover:bg-gray-50 transition${isSelected ? ' comparison-selected' : ''}">
+            <td class="py-3 px-2 text-center">
+                <input type="checkbox"
+                       ${isSelected ? 'checked' : ''}
+                       onchange="selectComparisonMaterial(${material.id})"
+                       title="Utiliser pour le devis"
+                       style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent-cyan);">
+            </td>
             <td class="py-3 px-2 text-gray-700 font-semibold">${material.type}</td>
             <td class="py-3 px-2 text-right text-gray-600">${material.price.toFixed(2)} €</td>
             <td class="py-3 px-2 text-right text-gray-600">${material.density.toFixed(2)}</td>
@@ -1225,15 +1428,51 @@ function updateComparisonTable() {
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 // Fonction pour supprimer un matériau de la comparaison
 function removeComparisonMaterial(id) {
     comparisonMaterials = comparisonMaterials.filter(m => m.id !== id);
+    if (selectedComparisonId === id) selectedComparisonId = null;
+    saveComparisonMaterials();
     updateComparisonTable();
     showNotification('Matériau supprimé de la comparaison', 'info');
+}
+
+// Sauvegarde la liste de comparaison dans localStorage
+function saveComparisonMaterials() {
+    localStorage.setItem(COMPARISON_STORAGE_KEY, JSON.stringify(comparisonMaterials));
+}
+
+// Charge la liste de comparaison depuis localStorage
+function loadComparisonMaterials() {
+    const saved = localStorage.getItem(COMPARISON_STORAGE_KEY);
+    if (saved) {
+        comparisonMaterials = JSON.parse(saved);
+        updateComparisonTable();
+    }
+}
+
+// Sélectionne un matériau de comparaison pour l'appliquer au calculateur
+function selectComparisonMaterial(id) {
+    if (selectedComparisonId === id) {
+        // Décocher : désélectionner
+        selectedComparisonId = null;
+    } else {
+        selectedComparisonId = id;
+        const material = comparisonMaterials.find(m => m.id === id);
+        if (material) {
+            document.getElementById('filamentType').value = material.type;
+            document.getElementById('filamentPrice').value = material.price;
+            document.getElementById('filamentDensity').value = material.density;
+            calculateCost();
+            autoSaveConfig();
+            showNotification(`Matériau ${material.type} appliqué au calculateur`, 'success');
+        }
+    }
+    updateComparisonTable();
 }
 
 // Exposer les fonctions nécessaires globalement
@@ -1250,5 +1489,8 @@ window.clearHistory = clearHistory;
 window.toggleTheme = toggleTheme;
 window.handleSTLUpload = handleSTLUpload;
 window.clearSTL = clearSTL;
+window.addComparisonMaterial = addComparisonMaterial;
+window.removeComparisonMaterial = removeComparisonMaterial;
+window.selectComparisonMaterial = selectComparisonMaterial;
 window.addComparisonMaterial = addComparisonMaterial;
 window.removeComparisonMaterial = removeComparisonMaterial;

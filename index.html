@@ -1806,14 +1806,164 @@
         .grid.grid-cols-3 {
             grid-template-columns: repeat(3, minmax(0, 1fr));
         }
-        .theme-toggle {
+        /* Container boutons top-right */
+        .top-actions {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 16px;
+            right: 16px;
             z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
+
+        /* Bouton Retour SaaS */
+        .btn-back-saas {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            background: rgba(255,255,255,0.04);
+            color: #94a3b8;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-back-saas:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+            background: rgba(0, 212, 255, 0.06);
+            color: var(--accent-cyan);
+        }
+
+        /* Language Switcher */
+        .lang-switcher {
+            position: relative;
+        }
+        .lang-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            background: rgba(255,255,255,0.04);
+            color: #94a3b8;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .lang-btn:hover,
+        .lang-btn.open {
+            border-color: rgba(0, 212, 255, 0.5);
+            background: rgba(0, 212, 255, 0.06);
+            color: var(--accent-cyan);
+        }
+        .lang-btn .lang-chevron {
+            width: 10px;
+            height: 10px;
+            opacity: 0.6;
+            transition: transform 0.2s ease;
+        }
+        /* Globe icon in lang button */
+        .lang-globe {
+            width: 16px;
+            height: 16px;
+            color: #a78bfa;
+            filter: drop-shadow(0 0 6px rgba(167,139,250,0.8));
+            flex-shrink: 0;
+        }
+        /* Lang code text */
+        .lang-code-text {
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+        .lang-btn.open .lang-chevron {
+            transform: rotate(180deg);
+        }
+        .lang-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            width: 200px;
+            border-radius: 14px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            background: #0d1f35;
+            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+            overflow: hidden;
+            z-index: 1001;
+        }
+        .lang-dropdown.open {
+            display: block;
+        }
+        .lang-dropdown-header {
+            padding: 8px 14px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #64748b;
+        }
+        .lang-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 9px 14px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #94a3b8;
+            transition: background 0.15s, color 0.15s;
+            text-align: left;
+        }
+        .lang-option:hover {
+            background: rgba(255,255,255,0.05);
+            color: #e2e8f0;
+        }
+        .lang-option.active {
+            background: rgba(0,212,255,0.07);
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+        .lang-option .lang-flag {
+            font-size: 18px;
+            width: 26px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .lang-option .lang-name {
+            flex: 1;
+        }
+        .lang-check {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-cyan);
+            flex-shrink: 0;
+        }
+        .lang-dropdown-footer {
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(0,212,255,0.2), transparent);
+        }
+
         .comparison-table {
             overflow-x: auto;
+        }
+        tr.comparison-selected {
+            background: rgba(0, 212, 255, 0.08) !important;
+            outline: 1px solid rgba(0, 212, 255, 0.3);
         }
         [data-theme="dark"] .border-b,
         [data-theme="dark"] .border-gray-200 {
@@ -1822,17 +1972,127 @@
     </style>
 </head>
 <body class="p-4">
-    <!-- Auth overlay — affiché immédiatement, supprimé par js/auth.js après vérification -->
-    <div id="auth-overlay">
-        <div class="auth-spinner"></div>
-        <p class="auth-overlay-text">Vérification de l'accès…</p>
+    <!-- Boutons top-right : Retour SaaS + Langue -->
+    <div class="top-actions">
+        <!-- Retour au SaaS -->
+        <a href="https://saas.ced-it.be" class="btn-back-saas">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <path d="M8.5 2.5L4 7l4.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="hidden sm:inline">Retour SaaS</span>
+        </a>
+
+        <!-- Sélecteur de langue -->
+        <div class="lang-switcher" id="langSwitcher">
+            <button type="button" class="lang-btn" id="langBtn" onclick="toggleLangDropdown()" aria-label="Changer de langue" aria-expanded="false">
+                <svg class="lang-globe" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M12 2.5C12 2.5 9 7 9 12s3 9.5 3 9.5M12 2.5C12 2.5 15 7 15 12s-3 9.5-3 9.5M2.5 12h19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span id="langFlag">🇫🇷</span>
+                <span class="hidden sm:inline lang-code-text" id="langCode">FR</span>
+                <svg class="lang-chevron" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                    <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+
+            <div class="lang-dropdown" id="langDropdown">
+                <div class="lang-dropdown-header">Langue / Language</div>
+                <button type="button" class="lang-option active" data-code="fr" data-flag="🇫🇷" data-native="FR" onclick="selectLang(this)">
+                    <span class="lang-flag">🇫🇷</span><span class="lang-name">Français</span>
+                    <svg class="lang-check" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="lang-option" data-code="en" data-flag="🇬🇧" data-native="EN" onclick="selectLang(this)">
+                    <span class="lang-flag">🇬🇧</span><span class="lang-name">English</span>
+                </button>
+                <button type="button" class="lang-option" data-code="nl" data-flag="🇳🇱" data-native="NL" onclick="selectLang(this)">
+                    <span class="lang-flag">🇳🇱</span><span class="lang-name">Nederlands</span>
+                </button>
+                <button type="button" class="lang-option" data-code="de" data-flag="🇩🇪" data-native="DE" onclick="selectLang(this)">
+                    <span class="lang-flag">🇩🇪</span><span class="lang-name">Deutsch</span>
+                </button>
+                <button type="button" class="lang-option" data-code="es" data-flag="🇪🇸" data-native="ES" onclick="selectLang(this)">
+                    <span class="lang-flag">🇪🇸</span><span class="lang-name">Español</span>
+                </button>
+                <button type="button" class="lang-option" data-code="hi" data-flag="🇮🇳" data-native="HI" onclick="selectLang(this)">
+                    <span class="lang-flag">🇮🇳</span><span class="lang-name">हिन्दी</span>
+                </button>
+                <div class="lang-dropdown-footer"></div>
+            </div>
+        </div>
     </div>
 
-    <!-- Toggle Mode Sombre -->
-    <button type="button" onclick="toggleTheme()" class="theme-toggle glass-effect px-4 py-2 rounded-full font-semibold shadow-lg hover:shadow-xl transition" style="color: var(--accent-cyan);">
-        <i class="fas fa-moon" id="themeIcon"></i>
-        <span id="themeText" class="ml-2">Mode Sombre</span>
-    </button>
+    <script>
+        // Language switcher logic
+        (function() {
+            var languages = [
+                { code: "fr", flag: "🇫🇷", native: "FR" },
+                { code: "en", flag: "🇬🇧", native: "EN" },
+                { code: "nl", flag: "🇳🇱", native: "NL" },
+                { code: "de", flag: "🇩🇪", native: "DE" },
+                { code: "es", flag: "🇪🇸", native: "ES" },
+                { code: "hi", flag: "🇮🇳", native: "HI" }
+            ];
+
+            // Restore saved locale
+            var saved = localStorage.getItem("ced-locale") || "fr";
+            var lang = languages.find(function(l) { return l.code === saved; }) || languages[0];
+            updateLangUI(lang.code, lang.flag, lang.native);
+
+            // Close on outside click
+            document.addEventListener("mousedown", function(e) {
+                var switcher = document.getElementById("langSwitcher");
+                if (switcher && !switcher.contains(e.target)) closeLangDropdown();
+            });
+        })();
+
+        window.toggleLangDropdown = function() {
+            var btn = document.getElementById("langBtn");
+            var dropdown = document.getElementById("langDropdown");
+            var isOpen = dropdown.classList.contains("open");
+            if (isOpen) {
+                closeLangDropdown();
+            } else {
+                dropdown.classList.add("open");
+                btn.classList.add("open");
+                btn.setAttribute("aria-expanded", "true");
+            }
+        };
+
+        window.closeLangDropdown = function() {
+            var btn = document.getElementById("langBtn");
+            var dropdown = document.getElementById("langDropdown");
+            dropdown.classList.remove("open");
+            btn.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+        };
+
+        window.selectLang = function(el) {
+            var code = el.getAttribute("data-code");
+            var flag = el.getAttribute("data-flag");
+            var native = el.getAttribute("data-native");
+            localStorage.setItem("ced-locale", code);
+            document.cookie = "ced-locale=" + code + "; path=/; max-age=31536000; SameSite=Lax";
+            updateLangUI(code, flag, native);
+            closeLangDropdown();
+        };
+
+        function updateLangUI(code, flag, native) {
+            // Update button
+            var flagEl = document.getElementById("langFlag");
+            var codeEl = document.getElementById("langCode");
+            if (flagEl) flagEl.textContent = flag;
+            if (codeEl) codeEl.textContent = native;
+            // Update active state in dropdown
+            document.querySelectorAll(".lang-option").forEach(function(opt) {
+                var isActive = opt.getAttribute("data-code") === code;
+                opt.classList.toggle("active", isActive);
+                // Show/hide checkmark
+                var check = opt.querySelector(".lang-check");
+                if (check) check.style.display = isActive ? "block" : "none";
+            });
+        }
+    </script>
 
     <div class="container mx-auto max-w-6xl">
         <!-- Header -->
@@ -2369,6 +2629,7 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr style="border-bottom: 2px solid var(--border-color);">
+                                <th class="text-center py-4 px-3 font-semibold" style="color: var(--accent-cyan);" title="Utiliser ce matériau pour le calculateur et le devis">Utiliser</th>
                                 <th class="text-left py-4 px-3 font-semibold" style="color: var(--accent-cyan);">Matériau</th>
                                 <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Prix (€/kg)</th>
                                 <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Densité</th>
@@ -2447,7 +2708,6 @@
         })();
     </script>
 
-    <script src="js/auth.js"></script>
     <script src="js/calculator.js?v=2"></script>
 
     <!-- Module Three.js pour la visualisation 3D -->
