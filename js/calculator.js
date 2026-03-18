@@ -117,6 +117,200 @@ let costChart = null;
 // Clé de stockage pour la comparaison de matériaux
 const COMPARISON_STORAGE_KEY = '3dprintComparisonMaterials';
 
+// ============================================================
+// SYSTÈME DE TRADUCTION (i18n)
+// ============================================================
+const TRANSLATIONS = {
+    fr: {
+        'app.title':"Calculateur d'Impression 3D",'app.subtitle':'Calculez précisément le coût de vos impressions 3D',
+        'stat.formats':'STL & 3MF supportés','stat.calc':'Calcul précis','stat.export':'Export PDF',
+        'sec.params':"Paramètres de l'impression",'sec.import':'Import STL / 3MF (Optionnel)','sec.filament':'Filament',
+        'sec.duration':'Durée','sec.operations':"Coûts d'exploitation",'sec.advanced':'Paramètres avancés',
+        'sec.printer':'Imprimante','sec.results':'Résultats','sec.chartTitle':'Répartition des coûts',
+        'lbl.filamentType':'Type de filament','lbl.filamentPrice':'Prix du filament (€/kg)',
+        'lbl.filamentWeight':'Poids utilisé (g)','lbl.filamentDensity':'Densité (g/cm³)',
+        'lbl.hours':'Heures','lbl.minutes':'Minutes','lbl.totalTime':'Temps total',
+        'lbl.power':'Consommation imprimante (W)','lbl.electricity':'Prix électricité (€/kWh)',
+        'lbl.printerCost':'Coût imprimante (€)','lbl.printerLifespan':'Durée de vie (heures)',
+        'lbl.maintenance':'Maintenance (€/heure)','lbl.failureRate':"Taux d'échec (%)",
+        'lbl.profitMargin':'Marge bénéficiaire (%)','lbl.laborHours':"Durée main-d'œuvre (heures)",
+        'lbl.laborCost':"Taux horaire main-d'œuvre (€/h)",
+        'btn.loadPreset':'Charger les paramètres Bambu Lab A1','btn.save':'Sauvegarder',
+        'btn.load':'Charger','btn.reset':'Réinitialiser','btn.pdf':'PDF',
+        'btn.calculate':'Calculer le coût','btn.addMaterial':'Ajouter un matériau','btn.browse':'Parcourir les fichiers',
+        'upload.dropzone':'Glissez-déposez vos fichiers ici',
+        'upload.formats':'Formats acceptés : STL, 3MF (plusieurs fichiers possibles)',
+        'res.totalCost':'Coût Total','res.withoutMargin':'Hors marge bénéficiaire',
+        'res.costDetails':'Détails des coûts','res.file':'Fichier','res.filament':'Filament',
+        'res.electricity':'Électricité','res.depreciation':'Amortissement',
+        'res.maintenance':'Maintenance','res.failures':'Échecs','res.labor':"Main-d'œuvre",
+        'res.sellingPrice':'PRIX DE VENTE SUGGÉRÉ','res.withMargin':'avec marge bénéficiaire',
+        'tbl.compTitle':'Comparaison de Matériaux','tbl.use':'Utiliser','tbl.material':'Matériau',
+        'tbl.filamentCost':'Coût filament','tbl.totalCost':'Coût total','tbl.sellingPrice':'Prix vente',
+        'tbl.empty':'Cliquez sur "Ajouter un matériau" pour comparer différents filaments',
+        'hist.title':'Historique des calculs','hist.clear':"Effacer l'historique",'hist.close':'Fermer',
+        'calc.calculating':'Calcul en cours...',
+    },
+    en: {
+        'app.title':'3D Printing Cost Calculator','app.subtitle':'Precisely calculate your 3D printing costs',
+        'stat.formats':'STL & 3MF supported','stat.calc':'Precise calculation','stat.export':'PDF Export',
+        'sec.params':'Print Parameters','sec.import':'Import STL / 3MF (Optional)','sec.filament':'Filament',
+        'sec.duration':'Duration','sec.operations':'Operating Costs','sec.advanced':'Advanced Parameters',
+        'sec.printer':'Printer','sec.results':'Results','sec.chartTitle':'Cost breakdown',
+        'lbl.filamentType':'Filament Type','lbl.filamentPrice':'Filament Price (€/kg)',
+        'lbl.filamentWeight':'Weight used (g)','lbl.filamentDensity':'Density (g/cm³)',
+        'lbl.hours':'Hours','lbl.minutes':'Minutes','lbl.totalTime':'Total time',
+        'lbl.power':'Printer consumption (W)','lbl.electricity':'Electricity price (€/kWh)',
+        'lbl.printerCost':'Printer cost (€)','lbl.printerLifespan':'Lifespan (hours)',
+        'lbl.maintenance':'Maintenance (€/hour)','lbl.failureRate':'Failure rate (%)',
+        'lbl.profitMargin':'Profit margin (%)','lbl.laborHours':'Labor hours',
+        'lbl.laborCost':'Labor rate (€/h)',
+        'btn.loadPreset':'Load Bambu Lab A1 presets','btn.save':'Save',
+        'btn.load':'Load','btn.reset':'Reset','btn.pdf':'PDF',
+        'btn.calculate':'Calculate cost','btn.addMaterial':'Add material','btn.browse':'Browse files',
+        'upload.dropzone':'Drag and drop your files here',
+        'upload.formats':'Accepted formats: STL, 3MF (multiple files allowed)',
+        'res.totalCost':'Total Cost','res.withoutMargin':'Excluding profit margin',
+        'res.costDetails':'Cost Details','res.file':'File','res.filament':'Filament',
+        'res.electricity':'Electricity','res.depreciation':'Depreciation',
+        'res.maintenance':'Maintenance','res.failures':'Failures','res.labor':'Labor',
+        'res.sellingPrice':'SUGGESTED SELLING PRICE','res.withMargin':'with profit margin',
+        'tbl.compTitle':'Material Comparison','tbl.use':'Use','tbl.material':'Material',
+        'tbl.filamentCost':'Filament cost','tbl.totalCost':'Total cost','tbl.sellingPrice':'Sale price',
+        'tbl.empty':'Click "Add material" to compare different filaments',
+        'hist.title':'Calculation History','hist.clear':'Clear history','hist.close':'Close',
+        'calc.calculating':'Calculating...',
+    },
+    nl: {
+        'app.title':'3D-printprijscalculator','app.subtitle':'Bereken nauwkeurig de kosten van uw 3D-prints',
+        'stat.formats':'STL & 3MF ondersteund','stat.calc':'Nauwkeurige berekening','stat.export':'PDF exporteren',
+        'sec.params':'Afdrukparameters','sec.import':'STL / 3MF importeren (Optioneel)','sec.filament':'Filament',
+        'sec.duration':'Duur','sec.operations':'Exploitatiekosten','sec.advanced':'Geavanceerde parameters',
+        'sec.printer':'Printer','sec.results':'Resultaten','sec.chartTitle':'Kostenverdeling',
+        'lbl.filamentType':'Filamenttype','lbl.filamentPrice':'Filamentprijs (€/kg)',
+        'lbl.filamentWeight':'Gebruikt gewicht (g)','lbl.filamentDensity':'Dichtheid (g/cm³)',
+        'lbl.hours':'Uren','lbl.minutes':'Minuten','lbl.totalTime':'Totale tijd',
+        'lbl.power':'Printerverbruik (W)','lbl.electricity':'Elektriciteitsprijs (€/kWh)',
+        'lbl.printerCost':'Printerkosten (€)','lbl.printerLifespan':'Levensduur (uren)',
+        'lbl.maintenance':'Onderhoud (€/uur)','lbl.failureRate':'Uitvalpercentage (%)',
+        'lbl.profitMargin':'Winstmarge (%)','lbl.laborHours':'Arbeidsuren',
+        'lbl.laborCost':'Arbeidstarief (€/h)',
+        'btn.loadPreset':'Bambu Lab A1-instellingen laden','btn.save':'Opslaan',
+        'btn.load':'Laden','btn.reset':'Resetten','btn.pdf':'PDF',
+        'btn.calculate':'Kosten berekenen','btn.addMaterial':'Materiaal toevoegen','btn.browse':'Bestanden bladeren',
+        'upload.dropzone':'Sleep uw bestanden hier naartoe',
+        'upload.formats':'Geaccepteerde formaten: STL, 3MF (meerdere bestanden mogelijk)',
+        'res.totalCost':'Totale kosten','res.withoutMargin':'Exclusief winstmarge',
+        'res.costDetails':'Kostenoverzicht','res.file':'Bestand','res.filament':'Filament',
+        'res.electricity':'Elektriciteit','res.depreciation':'Afschrijving',
+        'res.maintenance':'Onderhoud','res.failures':'Uitval','res.labor':'Arbeid',
+        'res.sellingPrice':'AANBEVOLEN VERKOOPPRIJS','res.withMargin':'met winstmarge',
+        'tbl.compTitle':'Materiaalvergelijking','tbl.use':'Gebruiken','tbl.material':'Materiaal',
+        'tbl.filamentCost':'Filamentkosten','tbl.totalCost':'Totale kosten','tbl.sellingPrice':'Verkoopprijs',
+        'tbl.empty':'Klik op "Materiaal toevoegen" om verschillende filamenten te vergelijken',
+        'hist.title':'Berekeningsgeschiedenis','hist.clear':'Geschiedenis wissen','hist.close':'Sluiten',
+        'calc.calculating':'Berekening...',
+    },
+    de: {
+        'app.title':'3D-Druckkostenrechner','app.subtitle':'Berechnen Sie genau die Kosten Ihrer 3D-Drucke',
+        'stat.formats':'STL & 3MF unterstützt','stat.calc':'Präzise Berechnung','stat.export':'PDF-Export',
+        'sec.params':'Druckparameter','sec.import':'STL / 3MF importieren (Optional)','sec.filament':'Filament',
+        'sec.duration':'Dauer','sec.operations':'Betriebskosten','sec.advanced':'Erweiterte Parameter',
+        'sec.printer':'Drucker','sec.results':'Ergebnisse','sec.chartTitle':'Kostenverteilung',
+        'lbl.filamentType':'Filamenttyp','lbl.filamentPrice':'Filamentpreis (€/kg)',
+        'lbl.filamentWeight':'Verwendetes Gewicht (g)','lbl.filamentDensity':'Dichte (g/cm³)',
+        'lbl.hours':'Stunden','lbl.minutes':'Minuten','lbl.totalTime':'Gesamtzeit',
+        'lbl.power':'Druckerverbrauch (W)','lbl.electricity':'Strompreis (€/kWh)',
+        'lbl.printerCost':'Druckerkosten (€)','lbl.printerLifespan':'Lebensdauer (Stunden)',
+        'lbl.maintenance':'Wartung (€/Stunde)','lbl.failureRate':'Ausfallrate (%)',
+        'lbl.profitMargin':'Gewinnmarge (%)','lbl.laborHours':'Arbeitsstunden',
+        'lbl.laborCost':'Arbeitslohn (€/h)',
+        'btn.loadPreset':'Bambu Lab A1-Einstellungen laden','btn.save':'Speichern',
+        'btn.load':'Laden','btn.reset':'Zurücksetzen','btn.pdf':'PDF',
+        'btn.calculate':'Kosten berechnen','btn.addMaterial':'Material hinzufügen','btn.browse':'Dateien durchsuchen',
+        'upload.dropzone':'Dateien hier ablegen',
+        'upload.formats':'Akzeptierte Formate: STL, 3MF (mehrere Dateien möglich)',
+        'res.totalCost':'Gesamtkosten','res.withoutMargin':'Ohne Gewinnmarge',
+        'res.costDetails':'Kostendetails','res.file':'Datei','res.filament':'Filament',
+        'res.electricity':'Strom','res.depreciation':'Abschreibung',
+        'res.maintenance':'Wartung','res.failures':'Ausfälle','res.labor':'Arbeit',
+        'res.sellingPrice':'EMPFOHLENER VERKAUFSPREIS','res.withMargin':'mit Gewinnmarge',
+        'tbl.compTitle':'Materialvergleich','tbl.use':'Verwenden','tbl.material':'Material',
+        'tbl.filamentCost':'Filamentkosten','tbl.totalCost':'Gesamtkosten','tbl.sellingPrice':'Verkaufspreis',
+        'tbl.empty':'Klicken Sie auf "Material hinzufügen" um verschiedene Filamente zu vergleichen',
+        'hist.title':'Berechnungshistorie','hist.clear':'Verlauf löschen','hist.close':'Schließen',
+        'calc.calculating':'Berechnung...',
+    },
+    es: {
+        'app.title':'Calculadora de Impresión 3D','app.subtitle':'Calcule con precisión el costo de sus impresiones 3D',
+        'stat.formats':'STL & 3MF compatibles','stat.calc':'Cálculo preciso','stat.export':'Exportar PDF',
+        'sec.params':'Parámetros de impresión','sec.import':'Importar STL / 3MF (Opcional)','sec.filament':'Filamento',
+        'sec.duration':'Duración','sec.operations':'Costos de operación','sec.advanced':'Parámetros avanzados',
+        'sec.printer':'Impresora','sec.results':'Resultados','sec.chartTitle':'Distribución de costos',
+        'lbl.filamentType':'Tipo de filamento','lbl.filamentPrice':'Precio del filamento (€/kg)',
+        'lbl.filamentWeight':'Peso utilizado (g)','lbl.filamentDensity':'Densidad (g/cm³)',
+        'lbl.hours':'Horas','lbl.minutes':'Minutos','lbl.totalTime':'Tiempo total',
+        'lbl.power':'Consumo impresora (W)','lbl.electricity':'Precio electricidad (€/kWh)',
+        'lbl.printerCost':'Costo impresora (€)','lbl.printerLifespan':'Vida útil (horas)',
+        'lbl.maintenance':'Mantenimiento (€/hora)','lbl.failureRate':'Tasa de fallos (%)',
+        'lbl.profitMargin':'Margen de beneficio (%)','lbl.laborHours':'Horas de mano de obra',
+        'lbl.laborCost':'Tarifa laboral (€/h)',
+        'btn.loadPreset':'Cargar ajustes Bambu Lab A1','btn.save':'Guardar',
+        'btn.load':'Cargar','btn.reset':'Restablecer','btn.pdf':'PDF',
+        'btn.calculate':'Calcular costo','btn.addMaterial':'Agregar material','btn.browse':'Examinar archivos',
+        'upload.dropzone':'Arrastre y suelte sus archivos aquí',
+        'upload.formats':'Formatos aceptados: STL, 3MF (varios archivos posibles)',
+        'res.totalCost':'Costo Total','res.withoutMargin':'Sin margen de beneficio',
+        'res.costDetails':'Detalles de costos','res.file':'Archivo','res.filament':'Filamento',
+        'res.electricity':'Electricidad','res.depreciation':'Amortización',
+        'res.maintenance':'Mantenimiento','res.failures':'Fallos','res.labor':'Mano de obra',
+        'res.sellingPrice':'PRECIO DE VENTA SUGERIDO','res.withMargin':'con margen de beneficio',
+        'tbl.compTitle':'Comparación de Materiales','tbl.use':'Usar','tbl.material':'Material',
+        'tbl.filamentCost':'Costo filamento','tbl.totalCost':'Costo total','tbl.sellingPrice':'Precio venta',
+        'tbl.empty':'Haga clic en "Agregar material" para comparar diferentes filamentos',
+        'hist.title':'Historial de cálculos','hist.clear':'Borrar historial','hist.close':'Cerrar',
+        'calc.calculating':'Calculando...',
+    },
+    hi: {
+        'app.title':'3D प्रिंट लागत कैलकुलेटर','app.subtitle':'अपने 3D प्रिंट की लागत की सटीक गणना करें',
+        'stat.formats':'STL & 3MF समर्थित','stat.calc':'सटीक गणना','stat.export':'PDF निर्यात',
+        'sec.params':'प्रिंट पैरामीटर','sec.import':'STL / 3MF आयात (वैकल्पिक)','sec.filament':'फिलामेंट',
+        'sec.duration':'अवधि','sec.operations':'परिचालन लागत','sec.advanced':'उन्नत पैरामीटर',
+        'sec.printer':'प्रिंटर','sec.results':'परिणाम','sec.chartTitle':'लागत वितरण',
+        'lbl.filamentType':'फिलामेंट प्रकार','lbl.filamentPrice':'फिलामेंट मूल्य (€/kg)',
+        'lbl.filamentWeight':'उपयोग किया गया वजन (g)','lbl.filamentDensity':'घनत्व (g/cm³)',
+        'lbl.hours':'घंटे','lbl.minutes':'मिनट','lbl.totalTime':'कुल समय',
+        'lbl.power':'प्रिंटर खपत (W)','lbl.electricity':'बिजली की कीमत (€/kWh)',
+        'lbl.printerCost':'प्रिंटर लागत (€)','lbl.printerLifespan':'जीवनकाल (घंटे)',
+        'lbl.maintenance':'रखरखाव (€/घंटा)','lbl.failureRate':'विफलता दर (%)',
+        'lbl.profitMargin':'लाभ मार्जिन (%)','lbl.laborHours':'श्रम घंटे',
+        'lbl.laborCost':'श्रम दर (€/h)',
+        'btn.loadPreset':'Bambu Lab A1 सेटिंग लोड करें','btn.save':'सहेजें',
+        'btn.load':'लोड करें','btn.reset':'रीसेट','btn.pdf':'PDF',
+        'btn.calculate':'लागत गणना करें','btn.addMaterial':'सामग्री जोड़ें','btn.browse':'फ़ाइलें ब्राउज़ करें',
+        'upload.dropzone':'अपनी फ़ाइलें यहाँ खींचें और छोड़ें',
+        'upload.formats':'स्वीकृत प्रारूप: STL, 3MF (कई फ़ाइलें संभव)',
+        'res.totalCost':'कुल लागत','res.withoutMargin':'लाभ मार्जिन के बिना',
+        'res.costDetails':'लागत विवरण','res.file':'फ़ाइल','res.filament':'फिलामेंट',
+        'res.electricity':'बिजली','res.depreciation':'मूल्यह्रास',
+        'res.maintenance':'रखरखाव','res.failures':'विफलता','res.labor':'श्रम',
+        'res.sellingPrice':'सुझाया गया बिक्री मूल्य','res.withMargin':'लाभ मार्जिन के साथ',
+        'tbl.compTitle':'सामग्री तुलना','tbl.use':'उपयोग','tbl.material':'सामग्री',
+        'tbl.filamentCost':'फिलामेंट लागत','tbl.totalCost':'कुल लागत','tbl.sellingPrice':'बिक्री मूल्य',
+        'tbl.empty':'विभिन्न फिलामेंट की तुलना करने के लिए "सामग्री जोड़ें" पर क्लिक करें',
+        'hist.title':'गणना इतिहास','hist.clear':'इतिहास मिटाएं','hist.close':'बंद करें',
+        'calc.calculating':'गणना हो रही है...',
+    },
+};
+
+function applyTranslations(lang) {
+    const t = TRANSLATIONS[lang] || TRANSLATIONS['fr'];
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        const key = el.getAttribute('data-i18n');
+        if (t[key] !== undefined) el.textContent = t[key];
+    });
+}
+
 // Utilitaire debounce pour l'auto-sauvegarde
 function debounce(fn, delay) {
     let timer;
@@ -192,12 +386,38 @@ document.addEventListener('DOMContentLoaded', function() {
     // Charger les matériaux de comparaison sauvegardés
     loadComparisonMaterials();
 
+    // Appliquer la langue sauvegardée
+    const savedLocale = localStorage.getItem('ced-locale') || 'fr';
+    applyTranslations(savedLocale);
+
     // Calcul automatique + auto-sauvegarde lors de la modification de n'importe quel champ
     const inputs = document.querySelectorAll('input, select');
     inputs.forEach(input => {
         input.addEventListener('input', calculateCost);
         input.addEventListener('input', autoSaveConfig);
         input.addEventListener('change', autoSaveConfig);
+    });
+
+    // Sauvegarde immédiate à la fermeture de page (couvre le cas debounce non déclenché)
+    window.addEventListener('beforeunload', function() {
+        const config = {
+            filamentType: document.getElementById('filamentType').value,
+            filamentPrice: document.getElementById('filamentPrice').value,
+            filamentWeight: document.getElementById('filamentWeight').value,
+            filamentDensity: document.getElementById('filamentDensity').value,
+            printHours: document.getElementById('printHours').value,
+            printMinutes: document.getElementById('printMinutes').value,
+            powerConsumption: document.getElementById('powerConsumption').value,
+            electricityPrice: document.getElementById('electricityPrice').value,
+            printerCost: document.getElementById('printerCost').value,
+            printerLifespan: document.getElementById('printerLifespan').value,
+            maintenanceCost: document.getElementById('maintenanceCost').value,
+            failureRate: document.getElementById('failureRate').value,
+            profitMargin: document.getElementById('profitMargin').value,
+            laborHours: document.getElementById('laborHours').value,
+            laborCost: document.getElementById('laborCost').value
+        };
+        localStorage.setItem('3dprintCalculatorConfig', JSON.stringify(config));
     });
 
     // Initialiser le graphique
@@ -1492,5 +1712,4 @@ window.clearSTL = clearSTL;
 window.addComparisonMaterial = addComparisonMaterial;
 window.removeComparisonMaterial = removeComparisonMaterial;
 window.selectComparisonMaterial = selectComparisonMaterial;
-window.addComparisonMaterial = addComparisonMaterial;
-window.removeComparisonMaterial = removeComparisonMaterial;
+window.applyTranslations = applyTranslations;

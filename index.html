@@ -2074,6 +2074,7 @@
             localStorage.setItem("ced-locale", code);
             document.cookie = "ced-locale=" + code + "; path=/; max-age=31536000; SameSite=Lax";
             updateLangUI(code, flag, native);
+            if (typeof applyTranslations === 'function') applyTranslations(code);
             closeLangDropdown();
         };
 
@@ -2103,10 +2104,10 @@
                 <img src="images/Ced-it-No background.png" alt="Ced-IT Logo" class="h-32 md:h-40 w-auto drop-shadow-lg logo-float">
 
                 <div class="text-center md:text-left">
-                    <h1 class="text-4xl md:text-5xl font-bold mb-3 header-title">
+                    <h1 class="text-4xl md:text-5xl font-bold mb-3 header-title" data-i18n="app.title">
                         Calculateur d'Impression 3D
                     </h1>
-                    <p class="text-lg" style="color: var(--text-secondary);">Calculez précisément le coût de vos impressions 3D</p>
+                    <p class="text-lg" style="color: var(--text-secondary);" data-i18n="app.subtitle">Calculez précisément le coût de vos impressions 3D</p>
                 </div>
             </div>
 
@@ -2114,15 +2115,15 @@
             <div class="flex justify-center gap-4 mt-6 flex-wrap">
                 <div class="stat-card flex items-center gap-3 px-4 py-2">
                     <i class="fas fa-file-upload" style="color: var(--accent-cyan);"></i>
-                    <span class="text-sm" style="color: var(--text-secondary);">STL & 3MF supportés</span>
+                    <span class="text-sm" style="color: var(--text-secondary);" data-i18n="stat.formats">STL & 3MF supportés</span>
                 </div>
                 <div class="stat-card flex items-center gap-3 px-4 py-2">
                     <i class="fas fa-calculator" style="color: var(--accent-cyan);"></i>
-                    <span class="text-sm" style="color: var(--text-secondary);">Calcul précis</span>
+                    <span class="text-sm" style="color: var(--text-secondary);" data-i18n="stat.calc">Calcul précis</span>
                 </div>
                 <div class="stat-card flex items-center gap-3 px-4 py-2">
                     <i class="fas fa-file-pdf" style="color: var(--accent-cyan);"></i>
-                    <span class="text-sm" style="color: var(--text-secondary);">Export PDF</span>
+                    <span class="text-sm" style="color: var(--text-secondary);" data-i18n="stat.export">Export PDF</span>
                 </div>
             </div>
         </div>
@@ -2132,13 +2133,13 @@
             <div class="lg:col-span-2">
                 <div class="glass-effect rounded-2xl p-6 mb-6">
                     <h2 class="text-2xl font-bold mb-6 flex items-center section-header" style="color: var(--text-primary);">
-                        <i class="fas fa-sliders-h mr-3" style="color: var(--accent-cyan);"></i>Paramètres de l'impression
+                        <i class="fas fa-sliders-h mr-3" style="color: var(--accent-cyan);"></i><span data-i18n="sec.params">Paramètres de l'impression</span>
                     </h2>
 
                     <!-- Import STL -->
                     <div class="mb-6">
                         <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
-                            <i class="fas fa-file-upload mr-2" style="color: var(--accent-cyan);"></i>Import STL / 3MF (Optionnel)
+                            <i class="fas fa-file-upload mr-2" style="color: var(--accent-cyan);"></i><span data-i18n="sec.import">Import STL / 3MF (Optionnel)</span>
                         </h3>
                         <div class="upload-zone rounded-xl p-8 text-center" id="uploadZone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                             <input type="file" id="fileInput" accept=".stl,.3mf" class="hidden" multiple>
@@ -2147,10 +2148,10 @@
                                 <div class="upload-icon mb-4">
                                     <i class="fas fa-cloud-upload-alt text-6xl" style="color: var(--accent-cyan);"></i>
                                 </div>
-                                <p class="font-semibold mb-2 text-lg" style="color: var(--text-primary);">Glissez-déposez vos fichiers ici</p>
-                                <p class="text-sm mb-4" style="color: var(--text-secondary);">Formats acceptés : STL, 3MF (plusieurs fichiers possibles)</p>
+                                <p class="font-semibold mb-2 text-lg" style="color: var(--text-primary);" data-i18n="upload.dropzone">Glissez-déposez vos fichiers ici</p>
+                                <p class="text-sm mb-4" style="color: var(--text-secondary);" data-i18n="upload.formats">Formats acceptés : STL, 3MF (plusieurs fichiers possibles)</p>
                                 <button type="button" onclick="document.getElementById('fileInput').click()" class="btn-ced text-white px-8 py-3 rounded-xl transition font-semibold" style="background: var(--accent-gradient);">
-                                    <i class="fas fa-folder-open mr-2"></i>Parcourir les fichiers
+                                    <i class="fas fa-folder-open mr-2"></i><span data-i18n="btn.browse">Parcourir les fichiers</span>
                                 </button>
                             </label>
                             <div id="stlInfo" class="mt-4 hidden">
@@ -2249,12 +2250,12 @@
                     <!-- Informations sur le filament -->
                     <div class="mb-6">
                         <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
-                            <i class="fas fa-scroll mr-2" style="color: var(--accent-cyan);"></i>Filament
+                            <i class="fas fa-scroll mr-2" style="color: var(--accent-cyan);"></i><span data-i18n="sec.filament">Filament</span>
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Type de filament
+                                    <span data-i18n="lbl.filamentType">Type de filament</span>
                                     <span class="tooltip ml-1">
                                         <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                         <span class="tooltiptext">Sélectionnez le type de matériau utilisé</span>
@@ -2273,7 +2274,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Prix du filament (€/kg)
+                                    <span data-i18n="lbl.filamentPrice">Prix du filament (€/kg)</span>
                                     <span class="tooltip ml-1">
                                         <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                         <span class="tooltiptext">Prix d'achat du filament par kilogramme</span>
@@ -2283,7 +2284,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Poids utilisé (g)
+                                    <span data-i18n="lbl.filamentWeight">Poids utilisé (g)</span>
                                     <span class="tooltip ml-1">
                                         <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                         <span class="tooltiptext">Poids de filament nécessaire pour l'impression</span>
@@ -2293,7 +2294,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Densité (g/cm³)
+                                    <span data-i18n="lbl.filamentDensity">Densité (g/cm³)</span>
                                     <span class="tooltip ml-1">
                                         <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                         <span class="tooltiptext">Densité du matériau (PLA: 1.24, ABS: 1.04, PETG: 1.27)</span>
@@ -2307,20 +2308,20 @@
                     <!-- Temps d'impression -->
                     <div class="mb-6">
                         <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
-                            <i class="fas fa-clock mr-2" style="color: #ffd700;"></i>Durée
+                            <i class="fas fa-clock mr-2" style="color: #ffd700;"></i><span data-i18n="sec.duration">Durée</span>
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Heures</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="lbl.hours">Heures</label>
                                 <input type="number" id="printHours" value="5" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Minutes</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2" data-i18n="lbl.minutes">Minutes</label>
                                 <input type="number" id="printMinutes" value="30" min="0" max="59" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Temps total
+                                    <span data-i18n="lbl.totalTime">Temps total</span>
                                     <span class="tooltip ml-1">
                                         <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                         <span class="tooltiptext">Temps calculé automatiquement</span>
@@ -2334,12 +2335,12 @@
                     <!-- Coûts d'exploitation -->
                     <div class="mb-6">
                         <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
-                            <i class="fas fa-bolt mr-2" style="color: #ffd700;"></i>Coûts d'exploitation
+                            <i class="fas fa-bolt mr-2" style="color: #ffd700;"></i><span data-i18n="sec.operations">Coûts d'exploitation</span>
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Consommation imprimante (W)
+                                    <span data-i18n="lbl.power">Consommation imprimante (W)</span>
                                     <span class="tooltip ml-1">
                                         <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                         <span class="tooltiptext">Puissance moyenne de l'imprimante (généralement 50-250W)</span>
@@ -2349,7 +2350,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Prix électricité (€/kWh)
+                                    <span data-i18n="lbl.electricity">Prix électricité (€/kWh)</span>
                                     <span class="tooltip ml-1">
                                         <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                         <span class="tooltiptext">Coût de l'électricité par kilowatt-heure (moyenne France: 0.19€)</span>
@@ -2363,14 +2364,14 @@
                     <!-- Paramètres avancés (pliable) -->
                     <div class="mb-6">
                         <button id="toggleAdvanced" class="w-full flex items-center justify-between text-lg font-semibold text-gray-700 p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
-                            <span><i class="fas fa-cog mr-2 text-purple-500"></i>Paramètres avancés</span>
+                            <span><i class="fas fa-cog mr-2 text-purple-500"></i><span data-i18n="sec.advanced">Paramètres avancés</span></span>
                             <i class="fas fa-chevron-down transition-transform" id="advancedIcon"></i>
                         </button>
                         <div id="advancedParams" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Coût imprimante (€)
+                                        <span data-i18n="lbl.printerCost">Coût imprimante (€)</span>
                                         <span class="tooltip ml-1">
                                             <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                             <span class="tooltiptext">Prix d'achat de l'imprimante</span>
@@ -2380,7 +2381,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Durée de vie (heures)
+                                        <span data-i18n="lbl.printerLifespan">Durée de vie (heures)</span>
                                         <span class="tooltip ml-1">
                                             <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                             <span class="tooltiptext">Durée de vie estimée de l'imprimante en heures d'utilisation</span>
@@ -2390,7 +2391,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Maintenance (€/heure)
+                                        <span data-i18n="lbl.maintenance">Maintenance (€/heure)</span>
                                         <span class="tooltip ml-1">
                                             <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                             <span class="tooltiptext">Coût de maintenance par heure d'impression</span>
@@ -2400,7 +2401,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Taux d'échec (%)
+                                        <span data-i18n="lbl.failureRate">Taux d'échec (%)</span>
                                         <span class="tooltip ml-1">
                                             <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                             <span class="tooltiptext">Pourcentage d'impressions ratées</span>
@@ -2410,7 +2411,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Marge bénéficiaire (%)
+                                        <span data-i18n="lbl.profitMargin">Marge bénéficiaire (%)</span>
                                         <span class="tooltip ml-1">
                                             <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                             <span class="tooltiptext">Marge de profit souhaitée</span>
@@ -2420,7 +2421,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Durée main-d'œuvre (heures)
+                                        <span data-i18n="lbl.laborHours">Durée main-d'œuvre (heures)</span>
                                         <span class="tooltip ml-1">
                                             <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                             <span class="tooltiptext">Temps de préparation, post-traitement, etc.</span>
@@ -2430,7 +2431,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        Taux horaire main-d'œuvre (€/h)
+                                        <span data-i18n="lbl.laborCost">Taux horaire main-d'œuvre (€/h)</span>
                                         <span class="tooltip ml-1">
                                             <i class="fas fa-info-circle text-gray-400 text-xs"></i>
                                             <span class="tooltiptext">Coût horaire de la main-d'œuvre</span>
@@ -2445,11 +2446,11 @@
                     <!-- Préréglage Bambu Lab A1 -->
                     <div class="mb-6">
                         <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
-                            <i class="fas fa-print mr-2" style="color: #0066ff;"></i>Imprimante
+                            <i class="fas fa-print mr-2" style="color: #0066ff;"></i><span data-i18n="sec.printer">Imprimante</span>
                         </h3>
                         <div class="flex justify-center">
                             <button type="button" onclick="loadPreset('bambu-a1')" class="preset-btn p-4 rounded-lg font-semibold transition shadow-md w-full md:w-auto" style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--border-color); color: var(--accent-cyan);">
-                                <i class="fas fa-cube mr-2"></i>Charger les paramètres Bambu Lab A1
+                                <i class="fas fa-cube mr-2"></i><span data-i18n="btn.loadPreset">Charger les paramètres Bambu Lab A1</span>
                             </button>
                         </div>
                     </div>
@@ -2457,22 +2458,22 @@
                     <!-- Boutons d'action -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                         <button type="button" onclick="saveConfig()" class="text-white py-3 rounded-lg font-semibold transition shadow" style="background: linear-gradient(135deg, #00d4ff 0%, #00a8cc 100%);">
-                            <i class="fas fa-save mr-2"></i>Sauvegarder
+                            <i class="fas fa-save mr-2"></i><span data-i18n="btn.save">Sauvegarder</span>
                         </button>
                         <button type="button" onclick="loadConfig()" class="text-white py-3 rounded-lg font-semibold transition shadow" style="background: linear-gradient(135deg, #0066ff 0%, #0044cc 100%);">
-                            <i class="fas fa-folder-open mr-2"></i>Charger
+                            <i class="fas fa-folder-open mr-2"></i><span data-i18n="btn.load">Charger</span>
                         </button>
                         <button type="button" onclick="resetToDefaults()" class="text-white py-3 rounded-lg font-semibold transition shadow" style="background: var(--bg-tertiary); border: 1px solid var(--border-color);">
-                            <i class="fas fa-undo mr-2"></i>Réinitialiser
+                            <i class="fas fa-undo mr-2"></i><span data-i18n="btn.reset">Réinitialiser</span>
                         </button>
                         <button type="button" onclick="exportPDF()" class="text-white py-3 rounded-lg font-semibold transition shadow" style="background: linear-gradient(135deg, #ff4757 0%, #c0392b 100%);">
-                            <i class="fas fa-file-pdf mr-2"></i>PDF
+                            <i class="fas fa-file-pdf mr-2"></i><span data-i18n="btn.pdf">PDF</span>
                         </button>
                     </div>
 
                     <!-- Bouton de calcul -->
                     <button onclick="calculateCost()" class="w-full text-white py-4 rounded-lg font-bold text-lg transition shadow-lg" style="background: linear-gradient(135deg, #00d4ff 0%, #0066ff 100%);" onmouseover="this.style.filter='brightness(1.1)'; this.style.boxShadow='0 0 25px rgba(0, 212, 255, 0.5)';" onmouseout="this.style.filter='brightness(1)'; this.style.boxShadow='0 4px 6px rgba(0, 0, 0, 0.1)';">
-                        <i class="fas fa-calculator mr-2"></i>Calculer le coût
+                        <i class="fas fa-calculator mr-2"></i><span data-i18n="btn.calculate">Calculer le coût</span>
                     </button>
                 </div>
             </div>
@@ -2487,35 +2488,35 @@
                     </div>
 
                     <h2 class="text-2xl font-bold mb-6 flex items-center section-header" style="color: var(--text-primary);">
-                        <i class="fas fa-receipt mr-3" style="color: var(--accent-cyan);"></i>Résultats
+                        <i class="fas fa-receipt mr-3" style="color: var(--accent-cyan);"></i><span data-i18n="sec.results">Résultats</span>
                     </h2>
 
                     <div id="results" class="space-y-4">
                         <!-- Coût total -->
                         <div class="result-card rounded-xl p-6 text-center">
-                            <div class="text-sm opacity-90 mb-2 uppercase tracking-wider">Coût Total</div>
+                            <div class="text-sm opacity-90 mb-2 uppercase tracking-wider" data-i18n="res.totalCost">Coût Total</div>
                             <div class="text-5xl font-bold total-cost-value" id="totalCost">0.00 €</div>
                             <div class="mt-2 text-sm opacity-75">
-                                <i class="fas fa-info-circle mr-1"></i>Hors marge bénéficiaire
+                                <i class="fas fa-info-circle mr-1"></i><span data-i18n="res.withoutMargin">Hors marge bénéficiaire</span>
                             </div>
                         </div>
 
                         <!-- Détails des coûts -->
                         <div class="rounded-xl p-4 space-y-3" style="background: var(--bg-card); border: 1px solid var(--border-color);">
                             <h3 class="font-semibold mb-3 pb-2" style="color: var(--text-primary); border-bottom: 1px solid var(--border-color);">
-                                <i class="fas fa-chart-pie mr-2" style="color: var(--accent-cyan);"></i>Détails des coûts
+                                <i class="fas fa-chart-pie mr-2" style="color: var(--accent-cyan);"></i><span data-i18n="res.costDetails">Détails des coûts</span>
                             </h3>
 
                             <!-- Informations fichier -->
                             <div class="flex justify-between items-center text-sm pb-2 mb-2" style="border-bottom: 1px solid var(--border-color);">
-                                <span style="color: var(--text-secondary);"><i class="fas fa-file mr-2" style="color: var(--accent-cyan);"></i>Fichier</span>
+                                <span style="color: var(--text-secondary);"><i class="fas fa-file mr-2" style="color: var(--accent-cyan);"></i><span data-i18n="res.file">Fichier</span></span>
                                 <span class="font-semibold text-xs" id="fileName" style="color: var(--accent-cyan);">-</span>
                             </div>
 
                             <!-- Filament avec barre -->
                             <div class="cost-item">
                                 <div class="flex justify-between items-center text-sm">
-                                    <span style="color: var(--text-secondary);"><i class="fas fa-scroll mr-2" style="color: #00d4ff;"></i>Filament</span>
+                                    <span style="color: var(--text-secondary);"><i class="fas fa-scroll mr-2" style="color: #00d4ff;"></i><span data-i18n="res.filament">Filament</span></span>
                                     <span class="font-semibold" id="filamentCost" style="color: var(--text-primary);">0.00 €</span>
                                 </div>
                                 <div class="cost-bar-container"><div class="cost-bar filament" id="filamentBar" style="width: 0%;"></div></div>
@@ -2524,7 +2525,7 @@
                             <!-- Électricité avec barre -->
                             <div class="cost-item">
                                 <div class="flex justify-between items-center text-sm">
-                                    <span style="color: var(--text-secondary);"><i class="fas fa-bolt mr-2" style="color: #ffd700;"></i>Électricité</span>
+                                    <span style="color: var(--text-secondary);"><i class="fas fa-bolt mr-2" style="color: #ffd700;"></i><span data-i18n="res.electricity">Électricité</span></span>
                                     <span class="font-semibold" id="electricityCost" style="color: var(--text-primary);">0.00 €</span>
                                 </div>
                                 <div class="cost-bar-container"><div class="cost-bar electricity" id="electricityBar" style="width: 0%;"></div></div>
@@ -2533,7 +2534,7 @@
                             <!-- Amortissement avec barre -->
                             <div class="cost-item">
                                 <div class="flex justify-between items-center text-sm">
-                                    <span style="color: var(--text-secondary);"><i class="fas fa-print mr-2" style="color: #0066ff;"></i>Amortissement</span>
+                                    <span style="color: var(--text-secondary);"><i class="fas fa-print mr-2" style="color: #0066ff;"></i><span data-i18n="res.depreciation">Amortissement</span></span>
                                     <span class="font-semibold" id="depreciationCost" style="color: var(--text-primary);">0.00 €</span>
                                 </div>
                                 <div class="cost-bar-container"><div class="cost-bar depreciation" id="depreciationBar" style="width: 0%;"></div></div>
@@ -2542,7 +2543,7 @@
                             <!-- Maintenance avec barre -->
                             <div class="cost-item">
                                 <div class="flex justify-between items-center text-sm">
-                                    <span style="color: var(--text-secondary);"><i class="fas fa-tools mr-2" style="color: #ff8c00;"></i>Maintenance</span>
+                                    <span style="color: var(--text-secondary);"><i class="fas fa-tools mr-2" style="color: #ff8c00;"></i><span data-i18n="res.maintenance">Maintenance</span></span>
                                     <span class="font-semibold" id="maintenanceCostDisplay" style="color: var(--text-primary);">0.00 €</span>
                                 </div>
                                 <div class="cost-bar-container"><div class="cost-bar maintenance" id="maintenanceBar" style="width: 0%;"></div></div>
@@ -2551,7 +2552,7 @@
                             <!-- Échecs avec barre -->
                             <div class="cost-item">
                                 <div class="flex justify-between items-center text-sm">
-                                    <span style="color: var(--text-secondary);"><i class="fas fa-exclamation-triangle mr-2" style="color: #ff4757;"></i>Échecs</span>
+                                    <span style="color: var(--text-secondary);"><i class="fas fa-exclamation-triangle mr-2" style="color: #ff4757;"></i><span data-i18n="res.failures">Échecs</span></span>
                                     <span class="font-semibold" id="failureCost" style="color: var(--text-primary);">0.00 €</span>
                                 </div>
                                 <div class="cost-bar-container"><div class="cost-bar failure" id="failureBar" style="width: 0%;"></div></div>
@@ -2560,7 +2561,7 @@
                             <!-- Main-d'œuvre avec barre -->
                             <div class="cost-item">
                                 <div class="flex justify-between items-center text-sm">
-                                    <span style="color: var(--text-secondary);"><i class="fas fa-user-tie mr-2" style="color: #2ecc71;"></i>Main-d'œuvre</span>
+                                    <span style="color: var(--text-secondary);"><i class="fas fa-user-tie mr-2" style="color: #2ecc71;"></i><span data-i18n="res.labor">Main-d'œuvre</span></span>
                                     <span class="font-semibold" id="laborCostDisplay" style="color: var(--text-primary);">0.00 €</span>
                                 </div>
                                 <div class="cost-bar-container"><div class="cost-bar labor" id="laborBar" style="width: 0%;"></div></div>
@@ -2574,9 +2575,9 @@
 
                         <!-- Prix de vente suggéré -->
                         <div class="rounded-xl p-4 selling-price-card" style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%); border: 2px solid rgba(0, 212, 255, 0.4);">
-                            <div class="text-sm font-medium mb-2" style="color: var(--accent-cyan);">PRIX DE VENTE SUGGÉRÉ</div>
+                            <div class="text-sm font-medium mb-2" style="color: var(--accent-cyan);" data-i18n="res.sellingPrice">PRIX DE VENTE SUGGÉRÉ</div>
                             <div class="text-3xl font-bold" id="sellingPrice" style="background: linear-gradient(90deg, #00d4ff, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">0.00 €</div>
-                            <div class="text-xs mt-1" style="color: var(--accent-cyan-dark);">avec marge bénéficiaire</div>
+                            <div class="text-xs mt-1" style="color: var(--accent-cyan-dark);" data-i18n="res.withMargin">avec marge bénéficiaire</div>
                         </div>
 
                         <!-- Statistiques supplémentaires -->
@@ -2598,7 +2599,7 @@
 
                         <!-- Graphique de répartition -->
                         <div class="rounded-xl p-4" style="background: var(--bg-card); border: 1px solid var(--border-color);">
-                            <h3 class="font-semibold mb-3 text-center" style="color: var(--text-primary);">Répartition des coûts</h3>
+                            <h3 class="font-semibold mb-3 text-center" style="color: var(--text-primary);" data-i18n="sec.chartTitle">Répartition des coûts</h3>
                             <div style="height: 250px;">
                                 <canvas id="costChart"></canvas>
                             </div>
@@ -2618,10 +2619,10 @@
             <div class="glass-effect rounded-2xl p-6">
                 <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
                     <h2 class="text-2xl font-bold flex items-center section-header" style="color: var(--text-primary);">
-                        <i class="fas fa-balance-scale mr-3" style="color: var(--accent-cyan);"></i>Comparaison de Matériaux
+                        <i class="fas fa-balance-scale mr-3" style="color: var(--accent-cyan);"></i><span data-i18n="tbl.compTitle">Comparaison de Matériaux</span>
                     </h2>
                     <button type="button" onclick="addComparisonMaterial()" class="btn-ced text-white px-6 py-3 rounded-xl transition font-semibold" style="background: var(--accent-gradient);">
-                        <i class="fas fa-plus mr-2"></i>Ajouter un matériau
+                        <i class="fas fa-plus mr-2"></i><span data-i18n="btn.addMaterial">Ajouter un matériau</span>
                     </button>
                 </div>
 
@@ -2629,13 +2630,13 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr style="border-bottom: 2px solid var(--border-color);">
-                                <th class="text-center py-4 px-3 font-semibold" style="color: var(--accent-cyan);" title="Utiliser ce matériau pour le calculateur et le devis">Utiliser</th>
-                                <th class="text-left py-4 px-3 font-semibold" style="color: var(--accent-cyan);">Matériau</th>
+                                <th class="text-center py-4 px-3 font-semibold" style="color: var(--accent-cyan);" data-i18n="tbl.use">Utiliser</th>
+                                <th class="text-left py-4 px-3 font-semibold" style="color: var(--accent-cyan);" data-i18n="tbl.material">Matériau</th>
                                 <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Prix (€/kg)</th>
                                 <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Densité</th>
-                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Coût filament</th>
-                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Coût total</th>
-                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--accent-cyan);">Prix vente</th>
+                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);" data-i18n="tbl.filamentCost">Coût filament</th>
+                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);" data-i18n="tbl.totalCost">Coût total</th>
+                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--accent-cyan);" data-i18n="tbl.sellingPrice">Prix vente</th>
                                 <th class="text-center py-4 px-3" aria-label="Actions"></th>
                             </tr>
                         </thead>
@@ -2648,7 +2649,7 @@
                 <div class="mt-6 text-center" id="comparisonEmpty">
                     <div class="p-8 rounded-xl" style="background: rgba(0, 212, 255, 0.05); border: 1px dashed var(--border-color);">
                         <i class="fas fa-layer-group text-4xl mb-3" style="color: var(--accent-cyan); opacity: 0.5;"></i>
-                        <p style="color: var(--text-secondary);">Cliquez sur "Ajouter un matériau" pour comparer différents filaments</p>
+                        <p style="color: var(--text-secondary);" data-i18n="tbl.empty">Cliquez sur "Ajouter un matériau" pour comparer différents filaments</p>
                     </div>
                 </div>
             </div>
@@ -2659,7 +2660,7 @@
             <div class="glass-effect rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold text-gray-800 flex items-center">
-                        <i class="fas fa-history mr-3 text-purple-600"></i>Historique des calculs
+                        <i class="fas fa-history mr-3 text-purple-600"></i><span data-i18n="hist.title">Historique des calculs</span>
                     </h2>
                     <button onclick="toggleHistory()" class="text-gray-500 hover:text-gray-700 text-2xl">
                         <i class="fas fa-times"></i>
@@ -2670,10 +2671,10 @@
                 </div>
                 <div class="mt-6 flex gap-3">
                     <button type="button" onclick="clearHistory()" class="flex-1 text-white py-3 rounded-lg font-semibold transition" style="background: linear-gradient(135deg, #ff4757 0%, #c0392b 100%);">
-                        <i class="fas fa-trash mr-2"></i>Effacer l'historique
+                        <i class="fas fa-trash mr-2"></i><span data-i18n="hist.clear">Effacer l'historique</span>
                     </button>
                     <button type="button" onclick="toggleHistory()" class="flex-1 text-white py-3 rounded-lg font-semibold transition" style="background: var(--bg-tertiary); border: 1px solid var(--border-color);">
-                        <i class="fas fa-times mr-2"></i>Fermer
+                        <i class="fas fa-times mr-2"></i><span data-i18n="hist.close">Fermer</span>
                     </button>
                 </div>
             </div>
