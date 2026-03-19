@@ -1,0 +1,13 @@
+{
+  "name": "calculateur-impression-3d",
+  "version": "3.6.0",
+  "description": "Calculateur de prix d'impression 3D - Ced-IT",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2"
+  }
+}

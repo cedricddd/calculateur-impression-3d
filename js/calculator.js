@@ -2,86 +2,21 @@
 // Gère tous les calculs et mises à jour de l'interface
 
 // ============================================================
-// DONNÉES ENTREPRISE – identiques au module devis Ced-IT
+// Profil entreprise — récupéré côté serveur via /api/profile
 // ============================================================
-const COMPANY = {
-    name:         'CED-IT',
-    address:      'Rue Thier May 42',
-    city:         '4910 Theux',
-    phone:        '0495 20 92 78',
-    email:        'cedric@ced-it.be',
-    website:      'www.ced-it.com',
-    vat:          'BE 1019.855.327',
-    iban:         'BE84 7320 8002 5859',
-    bank:         'CBC',
-    manager:      'Cédric',
-    managerTitle: 'Gérant CED-IT',
-};
-
-// ============================================================
-// SSO – Token SaaS + profil entreprise dynamique
-// ============================================================
-const SAAS_URL = 'https://saas.ced-it.be';
-const APP_SLUG  = 'calculateur-3d';
-const TOKEN_KEY = 'ced-app-token';
-
-/**
- * Capture le token SSO depuis l'URL (?token=…) et le stocke en localStorage.
- * Nettoie l'URL immédiatement pour éviter qu'il reste visible.
- */
-function captureSsoToken() {
-    const params = new URLSearchParams(window.location.search);
-    const token  = params.get('token');
-    if (token) {
-        localStorage.setItem(TOKEN_KEY, token);
-        params.delete('token');
-        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-        window.history.replaceState({}, '', newUrl);
-    }
-}
-
-/**
- * Récupère le profil entreprise depuis le SaaS.
- * Retourne les données du profil si disponibles, sinon le fallback COMPANY.
- */
 const EMPTY_PROFILE = {
     name: '', address: '', city: '', phone: '', email: '',
     website: '', vat: '', iban: '', bank: '',
-    manager: '', managerTitle: '', logoUrl: null,
+    manager: '', managerTitle: '', logoBase64: null,
 };
-const PROFILE_CACHE_KEY = 'ced-company-profile-cache';
-
-function getCachedProfile() {
-    try {
-        const raw = localStorage.getItem(PROFILE_CACHE_KEY);
-        return raw ? JSON.parse(raw) : null;
-    } catch (_) { return null; }
-}
 
 async function fetchCompanyProfile() {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) {
-        return getCachedProfile() || EMPTY_PROFILE;
-    }
-
     try {
-        const res = await fetch(`${SAAS_URL}/api/apps/${APP_SLUG}/profile`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.status === 401) {
-            // Token expiré – on le supprime, on utilise le cache
-            localStorage.removeItem(TOKEN_KEY);
-            return getCachedProfile() || EMPTY_PROFILE;
-        }
-
-        if (!res.ok) return getCachedProfile() || EMPTY_PROFILE;
-
-        const { profile } = await res.json();
-
-        if (!profile) return getCachedProfile() || EMPTY_PROFILE;
-
-        const result = {
+        const res = await fetch('/api/profile');
+        if (!res.ok) return EMPTY_PROFILE;
+        const { profile, logoBase64 } = await res.json();
+        if (!profile) return EMPTY_PROFILE;
+        return {
             name:         profile.companyName  || '',
             address:      profile.address      || '',
             city:         (profile.postalCode && profile.city)
@@ -95,56 +30,12 @@ async function fetchCompanyProfile() {
             bank:         profile.bank         || '',
             manager:      profile.manager      || '',
             managerTitle: profile.managerTitle || '',
-            logoUrl:      profile.logoPath ? `${SAAS_URL}${profile.logoPath}` : null,
+            logoBase64:   logoBase64 || null,
         };
-
-        // Mettre en cache pour les prochaines utilisations (token expiré, hors-ligne, etc.)
-        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(result));
-        return result;
     } catch (_) {
-        return getCachedProfile() || EMPTY_PROFILE;
+        return EMPTY_PROFILE;
     }
 }
-
-// Capturer le token SSO dès le chargement du script
-captureSsoToken();
-
-/**
- * Met à jour le bouton de connexion SSO selon l'état du token.
- */
-function updateSsoButton() {
-    const btn = document.getElementById('btnSsoLogin');
-    const txt = document.getElementById('btnSsoText');
-    if (!btn || !txt) return;
-    const token = localStorage.getItem(TOKEN_KEY);
-    const cached = getCachedProfile();
-    if (token || cached?.name) {
-        btn.classList.add('connected');
-        txt.textContent = cached?.name ? cached.name : 'Connecté';
-    } else {
-        btn.classList.remove('connected');
-        txt.textContent = 'Connexion';
-    }
-}
-
-/**
- * Déclenche le flux SSO ou déconnecte si déjà connecté.
- */
-function handleSsoLogin() {
-    const token = localStorage.getItem(TOKEN_KEY);
-    const cached = getCachedProfile();
-    if (token || cached?.name) {
-        // Déconnexion : supprimer token et cache
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(PROFILE_CACHE_KEY);
-        updateSsoButton();
-        return;
-    }
-    const redirectUrl = window.location.origin + window.location.pathname;
-    window.location.href = `${SAAS_URL}/auth/app-login?appSlug=${APP_SLUG}&redirectUrl=${encodeURIComponent(redirectUrl)}`;
-}
-
-document.addEventListener('DOMContentLoaded', updateSsoButton);
 
 // Valeurs par défaut pour la densité selon le type de filament
 const filamentDensities = {
@@ -1016,20 +907,13 @@ async function exportPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
-        // Charger le logo : priorité au logo utilisateur, fallback logo Ced-IT
-        let logoBase64 = null;
-        if (company.logoUrl) {
-            try {
-                logoBase64 = await loadImageAsBase64(company.logoUrl);
-            } catch (_) {
-                // Logo utilisateur inaccessible – on tente le logo Ced-IT
-            }
-        }
+        // Logo : fourni par le serveur (profil SaaS) ou fallback local
+        let logoBase64 = company.logoBase64 || null;
         if (!logoBase64) {
             try {
                 logoBase64 = await loadImageAsBase64('images/Ced-it-No background.png');
             } catch (_) {
-                // Pas de logo du tout → fallback texte
+                // Pas de logo → fallback texte
             }
         }
 

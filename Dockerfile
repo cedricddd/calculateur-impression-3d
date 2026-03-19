@@ -1,31 +1,29 @@
-# Dockerfile pour le Calculateur d'Impression 3D
-# Image légère basée sur Nginx Alpine
+FROM node:20-alpine
 
-FROM nginx:alpine
+LABEL maintainer="cedric@ced-it.be"
+LABEL description="Calculateur de prix d'impression 3D - Ced-IT"
+LABEL version="4.0.0"
 
-# Métadonnées
-LABEL maintainer="votre-email@example.com"
-LABEL description="Calculateur de prix d'impression 3D - Application web statique"
-LABEL version="3.6.0"
+WORKDIR /app
 
-# Copier les fichiers de l'application dans le répertoire Nginx
-COPY index.html /usr/share/nginx/html/
-COPY favicon.svg /usr/share/nginx/html/
-COPY js/ /usr/share/nginx/html/js/
-COPY css/ /usr/share/nginx/html/css/
-COPY images/ /usr/share/nginx/html/images/
-COPY Documentation/ /usr/share/nginx/html/Documentation/
-COPY README.md /usr/share/nginx/html/
-COPY *.html /usr/share/nginx/html/
+# Dépendances Node
+COPY package*.json ./
+RUN npm ci --only=production
 
-# Configuration Nginx personnalisée (optionnel)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Serveur + auth
+COPY server.js ./
+COPY auth/ ./auth/
+COPY middleware/ ./middleware/
 
-# Définir les permissions
-RUN chmod -R 755 /usr/share/nginx/html
+# Fichiers statiques dans public/
+COPY index.html favicon.svg ./public/
+COPY js/   ./public/js/
+COPY css/  ./public/css/
+COPY images/ ./public/images/
 
-# Exposer le port 80
-EXPOSE 80
+EXPOSE 3080
 
-# Commande de démarrage (définie par l'image nginx:alpine)
-# CMD ["nginx", "-g", "daemon off;"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:3080/health || exit 1
+
+CMD ["node", "server.js"]
