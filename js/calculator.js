@@ -49,10 +49,20 @@ const EMPTY_PROFILE = {
     website: '', vat: '', iban: '', bank: '',
     manager: '', managerTitle: '', logoUrl: null,
 };
+const PROFILE_CACHE_KEY = 'ced-company-profile-cache';
+
+function getCachedProfile() {
+    try {
+        const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+}
 
 async function fetchCompanyProfile() {
     const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return EMPTY_PROFILE;
+    if (!token) {
+        return getCachedProfile() || EMPTY_PROFILE;
+    }
 
     try {
         const res = await fetch(`${SAAS_URL}/api/apps/${APP_SLUG}/profile`, {
@@ -60,25 +70,18 @@ async function fetchCompanyProfile() {
         });
 
         if (res.status === 401) {
-            // Token expiré – on le supprime
+            // Token expiré – on le supprime, on utilise le cache
             localStorage.removeItem(TOKEN_KEY);
-            return EMPTY_PROFILE;
+            return getCachedProfile() || EMPTY_PROFILE;
         }
 
-        if (!res.ok) return EMPTY_PROFILE;
+        if (!res.ok) return getCachedProfile() || EMPTY_PROFILE;
 
         const { profile } = await res.json();
 
-        // Si pas de profil en DB, retourner des champs vides (pas les données CED-IT)
-        if (!profile) {
-            return {
-                name: '', address: '', city: '', phone: '', email: '',
-                website: '', vat: '', iban: '', bank: '',
-                manager: '', managerTitle: '', logoUrl: null,
-            };
-        }
+        if (!profile) return getCachedProfile() || EMPTY_PROFILE;
 
-        return {
+        const result = {
             name:         profile.companyName  || '',
             address:      profile.address      || '',
             city:         (profile.postalCode && profile.city)
@@ -94,8 +97,12 @@ async function fetchCompanyProfile() {
             managerTitle: profile.managerTitle || '',
             logoUrl:      profile.logoPath ? `${SAAS_URL}${profile.logoPath}` : null,
         };
+
+        // Mettre en cache pour les prochaines utilisations (token expiré, hors-ligne, etc.)
+        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(result));
+        return result;
     } catch (_) {
-        return EMPTY_PROFILE;
+        return getCachedProfile() || EMPTY_PROFILE;
     }
 }
 
