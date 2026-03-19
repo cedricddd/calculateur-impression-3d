@@ -27,10 +27,11 @@ app.get('/callback', (req, res) => {
     return res.redirect(`${saasUrl}/apps/calculateur-3d?upgrade=true`);
   }
 
-  const maxAge = (payload.exp - Math.floor(Date.now() / 1000)) * 1000;
+  const appUrl  = process.env.APP_URL || '';
+  const maxAge  = (payload.exp - Math.floor(Date.now() / 1000)) * 1000;
   res.cookie('calc3d_token', token, {
     httpOnly: true,
-    secure:   process.env.NODE_ENV === 'production',
+    secure:   appUrl.startsWith('https'),
     sameSite: 'lax',
     maxAge,
   });
