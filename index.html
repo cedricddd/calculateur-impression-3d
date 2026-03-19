@@ -655,14 +655,36 @@
                     console.log('📄 Lecture du fichier:', sliceInfoFile.name);
                     const sliceInfoContent = await sliceInfoFile.async('string');
 
-                    // Parser le fichier config (format key = value)
-                    sliceInfoContent.split('\n').forEach(line => {
-                        const match = line.match(/^(\w+)\s*=\s*(.+)$/);
-                        if (match) {
-                            sliceConfig[match[1]] = match[2].trim();
+                    // Essayer d'abord le format XML (Bambu Studio)
+                    const sliceXml = new DOMParser().parseFromString(sliceInfoContent, 'text/xml');
+                    const parseError = sliceXml.querySelector('parsererror');
+                    if (!parseError) {
+                        // Format XML Bambu Studio: <metadata key="..." value="..."/>
+                        sliceXml.querySelectorAll('metadata').forEach(el => {
+                            const key = el.getAttribute('key');
+                            const value = el.getAttribute('value');
+                            if (key && value !== null) sliceConfig[key] = value;
+                        });
+                        // <filament used_g="..." used_m="..."/>
+                        const filamentEls = sliceXml.querySelectorAll('filament');
+                        if (filamentEls.length > 0) {
+                            let totalG = 0, totalM = 0;
+                            filamentEls.forEach(el => {
+                                totalG += parseFloat(el.getAttribute('used_g') || 0);
+                                totalM += parseFloat(el.getAttribute('used_m') || 0);
+                            });
+                            if (totalG > 0) sliceConfig._filament_used_g = totalG;
+                            if (totalM > 0) sliceConfig._filament_used_m = totalM;
                         }
-                    });
-                    console.log('📊 Configuration de tranchage extraite:', sliceConfig);
+                        console.log('📊 Configuration de tranchage extraite (XML Bambu):', sliceConfig);
+                    } else {
+                        // Fallback format key = value
+                        sliceInfoContent.split('\n').forEach(line => {
+                            const match = line.match(/^(\w+)\s*=\s*(.+)$/);
+                            if (match) sliceConfig[match[1]] = match[2].trim();
+                        });
+                        console.log('📊 Configuration de tranchage extraite (key=value):', sliceConfig);
+                    }
                 }
 
                 // Chercher et lire project_settings.config (Bambu Studio)
@@ -756,6 +778,10 @@
                     const timeStr = String(plateData.print_time);
                     printTime = parseTimeString(timeStr) || parseFloat(timeStr) || 0;
                     console.log('  ⏱️ Temps depuis JSON (print_time):', printTime, 'secondes');
+                } else if (sliceConfig.prediction) {
+                    // Bambu Studio XML: <metadata key="prediction" value="19800"/>
+                    printTime = parseFloat(sliceConfig.prediction) || 0;
+                    console.log('  ⏱️ Temps depuis slice_info.config (prediction):', printTime, 'secondes');
                 } else if (gcodeData.model_time) {
                     // Temps depuis le G-code: "32m 19s"
                     printTime = parseTimeString(gcodeData.model_time);
@@ -768,7 +794,7 @@
                     printTime = parseFloat(metadata['print_time'] || metadata['time'] || metadata['slic3r:print_time'] || 0);
                     if (printTime > 0) console.log('  ⏱️ Temps depuis XML:', printTime, 'secondes');
                 }
-                
+
                 // Poids du filament
                 if (plateData?.filament_used_g) {
                     filamentWeight = parseFloat(plateData.filament_used_g) || 0;
@@ -776,6 +802,13 @@
                 } else if (plateData?.weight) {
                     filamentWeight = parseFloat(plateData.weight) || 0;
                     console.log('  ⚖️ Poids depuis JSON (weight):', filamentWeight, 'g');
+                } else if (sliceConfig._filament_used_g) {
+                    // Bambu Studio XML: <filament used_g="163.67"/>
+                    filamentWeight = sliceConfig._filament_used_g;
+                    console.log('  ⚖️ Poids depuis slice_info.config (filament):', filamentWeight, 'g');
+                } else if (sliceConfig.weight) {
+                    filamentWeight = parseFloat(sliceConfig.weight) || 0;
+                    console.log('  ⚖️ Poids depuis slice_info.config (weight):', filamentWeight, 'g');
                 } else if (gcodeData.weight) {
                     filamentWeight = gcodeData.weight;
                     console.log('  ⚖️ Poids depuis G-code:', filamentWeight, 'g');
@@ -783,11 +816,15 @@
                     filamentWeight = parseFloat(metadata['filament_weight'] || metadata['slic3r:filament_used_g'] || 0);
                     if (filamentWeight > 0) console.log('  ⚖️ Poids depuis XML:', filamentWeight, 'g');
                 }
-                
+
                 // Longueur du filament
                 if (plateData?.filament_used_mm) {
                     filamentLength = parseFloat(plateData.filament_used_mm) || 0;
                     console.log('  📏 Longueur depuis JSON (filament_used_mm):', filamentLength, 'mm');
+                } else if (sliceConfig._filament_used_m) {
+                    // Bambu Studio XML: <filament used_m="55.69"/> → convertir en mm
+                    filamentLength = sliceConfig._filament_used_m * 1000;
+                    console.log('  📏 Longueur depuis slice_info.config (filament):', filamentLength, 'mm');
                 } else if (gcodeData.length) {
                     filamentLength = gcodeData.length;
                     console.log('  📏 Longueur depuis G-code:', filamentLength, 'mm');
@@ -910,6 +947,18 @@
                     }
                 }
                 
+                // Extraire la vignette de la plaque depuis le 3MF (plate_1.png dans Metadata/)
+                let thumbnailBase64 = null;
+                const plateThumbFile = zip.file(/Metadata\/plate_1\.png$/i)[0]
+                    || zip.file(/Metadata\/plate_\d+\.png$/i)[0]
+                    || zip.file(/Metadata\/.*thumbnail.*\.png$/i)[0];
+                if (plateThumbFile) {
+                    const thumbData = await plateThumbFile.async('base64');
+                    thumbnailBase64 = 'data:image/png;base64,' + thumbData;
+                    console.log('🖼️ Vignette extraite:', plateThumbFile.name);
+                }
+                window._3mfThumbnail = thumbnailBase64;
+
                 // Ajouter la pièce à la liste des pièces importées
                 console.log('🎯 Avant addPartToList - volume:', volume, 'weight:', filamentWeight);
                 window.addPartToList({
@@ -2302,6 +2351,18 @@
                                 </label>
                                 <input type="number" id="filamentDensity" value="1.24" step="0.01" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
                             </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <span data-i18n="lbl.filamentColor">Couleur du filament</span>
+                                </label>
+                                <div class="flex items-center gap-3">
+                                    <input type="color" id="filamentColor" value="#ffffff"
+                                           class="h-10 w-16 cursor-pointer rounded-lg border border-gray-300 p-1 flex-shrink-0"
+                                           title="Choisir la couleur du filament">
+                                    <input type="text" id="filamentColorName" placeholder="Ex: Blanc, Rouge, Silk Gold..."
+                                           class="flex-1 px-4 py-2 border border-gray-300 rounded-lg transition">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -2361,13 +2422,12 @@
                         </div>
                     </div>
 
-                    <!-- Paramètres avancés (pliable) -->
+                    <!-- Paramètres avancés -->
                     <div class="mb-6">
-                        <button id="toggleAdvanced" class="w-full flex items-center justify-between text-lg font-semibold text-gray-700 p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                        <div class="w-full flex items-center text-lg font-semibold text-gray-700 p-4 bg-gray-100 rounded-lg">
                             <span><i class="fas fa-cog mr-2 text-purple-500"></i><span data-i18n="sec.advanced">Paramètres avancés</span></span>
-                            <i class="fas fa-chevron-down transition-transform" id="advancedIcon"></i>
-                        </button>
-                        <div id="advancedParams" class="hidden mt-4 p-4 bg-gray-50 rounded-lg">
+                        </div>
+                        <div id="advancedParams" class="mt-4 p-4 bg-gray-50 rounded-lg">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -2455,14 +2515,35 @@
                         </div>
                     </div>
 
+                    <!-- Section Client -->
+                    <div class="mb-6 rounded-xl p-4" style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.12) 0%, rgba(0, 102, 255, 0.12) 100%); border: 1px solid rgba(0, 212, 255, 0.35);">
+                        <h3 class="text-xl font-semibold mb-3 flex items-center" style="color: var(--accent-cyan);">
+                            <i class="fas fa-user-circle mr-2"></i>Client
+                        </h3>
+                        <div class="flex gap-2 mb-2">
+                            <select id="clientSelect" aria-label="Sélectionner un client" onchange="selectClientFromDropdown(this.value)" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg" style="background: var(--bg-card); color: var(--text-primary);">
+                                <option value="">— Aucun client —</option>
+                            </select>
+                            <button type="button" onclick="openClientModal(null)" class="px-3 py-2 rounded-lg font-semibold text-white" style="background: var(--accent-gradient);" title="Nouveau client">
+                                <i class="fas fa-user-plus"></i>
+                            </button>
+                            <button type="button" id="editClientBtn" onclick="editSelectedClient()" class="px-3 py-2 rounded-lg font-semibold text-white hidden" style="background: rgba(0, 102, 255, 0.8);" title="Modifier">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" id="deleteClientBtn" onclick="deleteSelectedClient()" class="px-3 py-2 rounded-lg font-semibold text-white hidden" style="background: rgba(255, 71, 87, 0.8);" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div id="clientPreview" class="hidden rounded-lg p-3 text-sm" style="background: rgba(0, 212, 255, 0.08); border: 1px solid rgba(0, 212, 255, 0.3);">
+                            <p class="font-semibold" id="clientPreviewName" style="color: var(--accent-cyan);"></p>
+                            <p id="clientPreviewCompany" style="color: var(--text-secondary);"></p>
+                            <p id="clientPreviewAddress" style="color: var(--text-muted); font-size: 0.75rem;"></p>
+                            <p id="clientPreviewContact" style="color: var(--text-muted); font-size: 0.75rem;"></p>
+                        </div>
+                    </div>
+
                     <!-- Boutons d'action -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                        <button type="button" onclick="saveConfig()" class="text-white py-3 rounded-lg font-semibold transition shadow" style="background: linear-gradient(135deg, #00d4ff 0%, #00a8cc 100%);">
-                            <i class="fas fa-save mr-2"></i><span data-i18n="btn.save">Sauvegarder</span>
-                        </button>
-                        <button type="button" onclick="loadConfig()" class="text-white py-3 rounded-lg font-semibold transition shadow" style="background: linear-gradient(135deg, #0066ff 0%, #0044cc 100%);">
-                            <i class="fas fa-folder-open mr-2"></i><span data-i18n="btn.load">Charger</span>
-                        </button>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
                         <button type="button" onclick="resetToDefaults()" class="text-white py-3 rounded-lg font-semibold transition shadow" style="background: var(--bg-tertiary); border: 1px solid var(--border-color);">
                             <i class="fas fa-undo mr-2"></i><span data-i18n="btn.reset">Réinitialiser</span>
                         </button>
@@ -2632,6 +2713,7 @@
                             <tr style="border-bottom: 2px solid var(--border-color);">
                                 <th class="text-center py-4 px-3 font-semibold" style="color: var(--accent-cyan);" data-i18n="tbl.use">Utiliser</th>
                                 <th class="text-left py-4 px-3 font-semibold" style="color: var(--accent-cyan);" data-i18n="tbl.material">Matériau</th>
+                                <th class="text-center py-4 px-3 font-semibold" style="color: var(--text-secondary);" data-i18n="tbl.color">Couleur</th>
                                 <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Prix (€/kg)</th>
                                 <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Densité</th>
                                 <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);" data-i18n="tbl.filamentCost">Coût filament</th>
@@ -2651,6 +2733,68 @@
                         <i class="fas fa-layer-group text-4xl mb-3" style="color: var(--accent-cyan); opacity: 0.5;"></i>
                         <p style="color: var(--text-secondary);" data-i18n="tbl.empty">Cliquez sur "Ajouter un matériau" pour comparer différents filaments</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Client -->
+        <div id="clientModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="glass-effect rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold flex items-center" style="color: var(--text-primary);">
+                        <i class="fas fa-user-circle mr-3" style="color: var(--accent-cyan);"></i>
+                        <span id="clientModalTitle">Nouveau client</span>
+                    </h2>
+                    <button onclick="closeClientModal()" class="text-gray-500 hover:text-gray-700 text-2xl" aria-label="Fermer">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <input type="hidden" id="clientModalId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="clientModalName" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Prénom / Nom *</label>
+                        <input type="text" id="clientModalName" placeholder="Jean Dupont" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="clientModalCompany" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Société</label>
+                        <input type="text" id="clientModalCompany" placeholder="Société SARL" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="clientModalEmail" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Email</label>
+                        <input type="email" id="clientModalEmail" placeholder="jean@example.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="clientModalPhone" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Téléphone</label>
+                        <input type="tel" id="clientModalPhone" placeholder="+32 01 23 45 67" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="clientModalAddress" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Adresse</label>
+                        <input type="text" id="clientModalAddress" placeholder="Rue de la Paix 1" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="clientModalPostal" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Code postal</label>
+                        <input type="text" id="clientModalPostal" placeholder="1000" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="clientModalCity" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Ville</label>
+                        <input type="text" id="clientModalCity" placeholder="Bruxelles" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="clientModalVat" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">N° TVA</label>
+                        <input type="text" id="clientModalVat" placeholder="BE 0123.456.789" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="clientModalNotes" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Notes</label>
+                        <input type="text" id="clientModalNotes" placeholder="Notes optionnelles" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-2">
+                    <button type="button" onclick="saveClientModal()" class="flex-1 text-white py-3 rounded-lg font-semibold" style="background: var(--accent-gradient);">
+                        <i class="fas fa-save mr-2"></i>Enregistrer
+                    </button>
+                    <button type="button" onclick="closeClientModal()" class="flex-1 py-3 rounded-lg font-semibold" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-secondary);">
+                        Annuler
+                    </button>
                 </div>
             </div>
         </div>
@@ -2740,10 +2884,15 @@
             renderer = new THREE.WebGLRenderer({
                 canvas: canvas,
                 antialias: true,
-                alpha: true
+                alpha: true,
+                preserveDrawingBuffer: true
             });
             renderer.setSize(container.clientWidth, 200);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            // Exposer pour la capture PDF depuis calculator.js (hors module)
+            window._3dRenderer = renderer;
+            window._3dScene = scene;
+            window._3dCamera = camera;
 
             // Contrôles orbite
             controls = new OrbitControls(camera, renderer.domElement);

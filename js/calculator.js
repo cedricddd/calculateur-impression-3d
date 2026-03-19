@@ -44,9 +44,15 @@ function captureSsoToken() {
  * Récupère le profil entreprise depuis le SaaS.
  * Retourne les données du profil si disponibles, sinon le fallback COMPANY.
  */
+const EMPTY_PROFILE = {
+    name: '', address: '', city: '', phone: '', email: '',
+    website: '', vat: '', iban: '', bank: '',
+    manager: '', managerTitle: '', logoUrl: null,
+};
+
 async function fetchCompanyProfile() {
     const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return COMPANY;
+    if (!token) return EMPTY_PROFILE;
 
     try {
         const res = await fetch(`${SAAS_URL}/api/apps/${APP_SLUG}/profile`, {
@@ -56,32 +62,40 @@ async function fetchCompanyProfile() {
         if (res.status === 401) {
             // Token expiré – on le supprime
             localStorage.removeItem(TOKEN_KEY);
-            return COMPANY;
+            return EMPTY_PROFILE;
         }
 
-        if (!res.ok) return COMPANY;
+        if (!res.ok) return EMPTY_PROFILE;
 
         const { profile } = await res.json();
-        if (!profile) return COMPANY;
+
+        // Si pas de profil en DB, retourner des champs vides (pas les données CED-IT)
+        if (!profile) {
+            return {
+                name: '', address: '', city: '', phone: '', email: '',
+                website: '', vat: '', iban: '', bank: '',
+                manager: '', managerTitle: '', logoUrl: null,
+            };
+        }
 
         return {
-            name:         profile.companyName  || COMPANY.name,
-            address:      profile.address      || COMPANY.address,
+            name:         profile.companyName  || '',
+            address:      profile.address      || '',
             city:         (profile.postalCode && profile.city)
                             ? `${profile.postalCode} ${profile.city}`
-                            : (profile.city || COMPANY.city),
-            phone:        profile.phone        || COMPANY.phone,
-            email:        profile.companyEmail || COMPANY.email,
-            website:      profile.website      || COMPANY.website,
-            vat:          profile.vatNumber    || COMPANY.vat,
-            iban:         profile.iban         || COMPANY.iban,
-            bank:         profile.bank         || COMPANY.bank,
-            manager:      profile.manager      || COMPANY.manager,
-            managerTitle: profile.managerTitle || COMPANY.managerTitle,
+                            : (profile.city || ''),
+            phone:        profile.phone        || '',
+            email:        profile.companyEmail || '',
+            website:      profile.website      || '',
+            vat:          profile.vatNumber    || '',
+            iban:         profile.iban         || '',
+            bank:         profile.bank         || '',
+            manager:      profile.manager      || '',
+            managerTitle: profile.managerTitle || '',
             logoUrl:      profile.logoPath ? `${SAAS_URL}${profile.logoPath}` : null,
         };
     } catch (_) {
-        return COMPANY;
+        return EMPTY_PROFILE;
     }
 }
 
@@ -146,10 +160,19 @@ const TRANSLATIONS = {
         'res.maintenance':'Maintenance','res.failures':'Échecs','res.labor':"Main-d'œuvre",
         'res.sellingPrice':'PRIX DE VENTE SUGGÉRÉ','res.withMargin':'avec marge bénéficiaire',
         'tbl.compTitle':'Comparaison de Matériaux','tbl.use':'Utiliser','tbl.material':'Matériau',
+        'tbl.color':'Couleur',
         'tbl.filamentCost':'Coût filament','tbl.totalCost':'Coût total','tbl.sellingPrice':'Prix vente',
         'tbl.empty':'Cliquez sur "Ajouter un matériau" pour comparer différents filaments',
+        'lbl.filamentColor':'Couleur du filament',
         'hist.title':'Historique des calculs','hist.clear':"Effacer l'historique",'hist.close':'Fermer',
         'calc.calculating':'Calcul en cours...',
+        'pdf.title':"DEVIS D'IMPRESSION 3D",'pdf.reference':'Référence','pdf.emitter':'ÉMETTEUR','pdf.client':'CLIENT',
+        'pdf.sellingPrice':'PRIX DE VENTE','pdf.details':'DÉTAILS DU PROJET','pdf.printTime':"Temps d'impression",
+        'pdf.piece':'Pièce','pdf.pieces':'Pièces ({n} fichiers)',
+        'pdf.noteTitle':'Ce prix comprend :',
+        'pdf.noteBody':"la main-d'œuvre ({h}h à {r} €/h), le filament, la consommation électrique, l'amortissement machine, la maintenance et une provision pour les éventuels échecs d'impression. Il n'inclut pas les frais d'envoi.",
+        'pdf.preview3d':'APERÇU 3D',
+        'pdf.footer':"Ce devis est établi à titre indicatif. Les prix peuvent varier selon la complexité réelle du projet.",
     },
     en: {
         'app.title':'3D Printing Cost Calculator','app.subtitle':'Precisely calculate your 3D printing costs',
@@ -176,10 +199,19 @@ const TRANSLATIONS = {
         'res.maintenance':'Maintenance','res.failures':'Failures','res.labor':'Labor',
         'res.sellingPrice':'SUGGESTED SELLING PRICE','res.withMargin':'with profit margin',
         'tbl.compTitle':'Material Comparison','tbl.use':'Use','tbl.material':'Material',
+        'tbl.color':'Color',
         'tbl.filamentCost':'Filament cost','tbl.totalCost':'Total cost','tbl.sellingPrice':'Sale price',
         'tbl.empty':'Click "Add material" to compare different filaments',
+        'lbl.filamentColor':'Filament color',
         'hist.title':'Calculation History','hist.clear':'Clear history','hist.close':'Close',
         'calc.calculating':'Calculating...',
+        'pdf.title':'3D PRINTING QUOTE','pdf.reference':'Reference','pdf.emitter':'FROM','pdf.client':'CLIENT',
+        'pdf.sellingPrice':'SELLING PRICE','pdf.details':'PROJECT DETAILS','pdf.printTime':'Print time',
+        'pdf.piece':'Part','pdf.pieces':'Parts ({n} files)',
+        'pdf.noteTitle':'This price includes:',
+        'pdf.noteBody':'labor ({h}h at {r} €/h), filament, electricity consumption, machine depreciation, maintenance, and a provision for potential print failures. Shipping costs are not included.',
+        'pdf.preview3d':'3D PREVIEW',
+        'pdf.footer':'This quote is provided for information purposes only. Prices may vary depending on the actual complexity of the project.',
     },
     nl: {
         'app.title':'3D-printprijscalculator','app.subtitle':'Bereken nauwkeurig de kosten van uw 3D-prints',
@@ -206,10 +238,19 @@ const TRANSLATIONS = {
         'res.maintenance':'Onderhoud','res.failures':'Uitval','res.labor':'Arbeid',
         'res.sellingPrice':'AANBEVOLEN VERKOOPPRIJS','res.withMargin':'met winstmarge',
         'tbl.compTitle':'Materiaalvergelijking','tbl.use':'Gebruiken','tbl.material':'Materiaal',
+        'tbl.color':'Kleur',
         'tbl.filamentCost':'Filamentkosten','tbl.totalCost':'Totale kosten','tbl.sellingPrice':'Verkoopprijs',
         'tbl.empty':'Klik op "Materiaal toevoegen" om verschillende filamenten te vergelijken',
+        'lbl.filamentColor':'Kleur van filament',
         'hist.title':'Berekeningsgeschiedenis','hist.clear':'Geschiedenis wissen','hist.close':'Sluiten',
         'calc.calculating':'Berekening...',
+        'pdf.title':'OFFERTE 3D-AFDRUKKEN','pdf.reference':'Referentie','pdf.emitter':'VAN','pdf.client':'KLANT',
+        'pdf.sellingPrice':'VERKOOPPRIJS','pdf.details':'PROJECTDETAILS','pdf.printTime':'Afdruktijd',
+        'pdf.piece':'Onderdeel','pdf.pieces':'Onderdelen ({n} bestanden)',
+        'pdf.noteTitle':'Deze prijs omvat:',
+        'pdf.noteBody':'arbeid ({h}u aan {r} €/u), filament, elektriciteitsverbruik, machineafschrijving, onderhoud en een voorziening voor mogelijke mislukte afdrukken. Verzendkosten zijn niet inbegrepen.',
+        'pdf.preview3d':'3D-VOORBEELD',
+        'pdf.footer':'Deze offerte is uitsluitend informatief. Prijzen kunnen variëren naargelang de werkelijke complexiteit van het project.',
     },
     de: {
         'app.title':'3D-Druckkostenrechner','app.subtitle':'Berechnen Sie genau die Kosten Ihrer 3D-Drucke',
@@ -236,10 +277,19 @@ const TRANSLATIONS = {
         'res.maintenance':'Wartung','res.failures':'Ausfälle','res.labor':'Arbeit',
         'res.sellingPrice':'EMPFOHLENER VERKAUFSPREIS','res.withMargin':'mit Gewinnmarge',
         'tbl.compTitle':'Materialvergleich','tbl.use':'Verwenden','tbl.material':'Material',
+        'tbl.color':'Farbe',
         'tbl.filamentCost':'Filamentkosten','tbl.totalCost':'Gesamtkosten','tbl.sellingPrice':'Verkaufspreis',
         'tbl.empty':'Klicken Sie auf "Material hinzufügen" um verschiedene Filamente zu vergleichen',
+        'lbl.filamentColor':'Filamentfarbe',
         'hist.title':'Berechnungshistorie','hist.clear':'Verlauf löschen','hist.close':'Schließen',
         'calc.calculating':'Berechnung...',
+        'pdf.title':'3D-DRUCK ANGEBOT','pdf.reference':'Referenz','pdf.emitter':'VON','pdf.client':'KUNDE',
+        'pdf.sellingPrice':'VERKAUFSPREIS','pdf.details':'PROJEKTDETAILS','pdf.printTime':'Druckzeit',
+        'pdf.piece':'Teil','pdf.pieces':'Teile ({n} Dateien)',
+        'pdf.noteTitle':'Dieser Preis beinhaltet:',
+        'pdf.noteBody':'Arbeitszeit ({h}h à {r} €/h), Filament, Stromverbrauch, Maschinenabschreibung, Wartung und eine Rückstellung für mögliche Druckfehler. Versandkosten sind nicht enthalten.',
+        'pdf.preview3d':'3D-VORSCHAU',
+        'pdf.footer':'Dieses Angebot ist unverbindlich. Die Preise können je nach tatsächlicher Projektkomplexität variieren.',
     },
     es: {
         'app.title':'Calculadora de Impresión 3D','app.subtitle':'Calcule con precisión el costo de sus impresiones 3D',
@@ -266,10 +316,19 @@ const TRANSLATIONS = {
         'res.maintenance':'Mantenimiento','res.failures':'Fallos','res.labor':'Mano de obra',
         'res.sellingPrice':'PRECIO DE VENTA SUGERIDO','res.withMargin':'con margen de beneficio',
         'tbl.compTitle':'Comparación de Materiales','tbl.use':'Usar','tbl.material':'Material',
+        'tbl.color':'Color',
         'tbl.filamentCost':'Costo filamento','tbl.totalCost':'Costo total','tbl.sellingPrice':'Precio venta',
         'tbl.empty':'Haga clic en "Agregar material" para comparar diferentes filamentos',
+        'lbl.filamentColor':'Color del filamento',
         'hist.title':'Historial de cálculos','hist.clear':'Borrar historial','hist.close':'Cerrar',
         'calc.calculating':'Calculando...',
+        'pdf.title':'PRESUPUESTO IMPRESIÓN 3D','pdf.reference':'Referencia','pdf.emitter':'DE','pdf.client':'CLIENTE',
+        'pdf.sellingPrice':'PRECIO DE VENTA','pdf.details':'DETALLES DEL PROYECTO','pdf.printTime':'Tiempo de impresión',
+        'pdf.piece':'Pieza','pdf.pieces':'Piezas ({n} archivos)',
+        'pdf.noteTitle':'Este precio incluye:',
+        'pdf.noteBody':'mano de obra ({h}h a {r} €/h), filamento, consumo eléctrico, amortización de la máquina, mantenimiento y una provisión para posibles fallos de impresión. No incluye gastos de envío.',
+        'pdf.preview3d':'VISTA PREVIA 3D',
+        'pdf.footer':'Este presupuesto es orientativo. Los precios pueden variar según la complejidad real del proyecto.',
     },
     hi: {
         'app.title':'3D प्रिंट लागत कैलकुलेटर','app.subtitle':'अपने 3D प्रिंट की लागत की सटीक गणना करें',
@@ -296,10 +355,19 @@ const TRANSLATIONS = {
         'res.maintenance':'रखरखाव','res.failures':'विफलता','res.labor':'श्रम',
         'res.sellingPrice':'सुझाया गया बिक्री मूल्य','res.withMargin':'लाभ मार्जिन के साथ',
         'tbl.compTitle':'सामग्री तुलना','tbl.use':'उपयोग','tbl.material':'सामग्री',
+        'tbl.color':'रंग',
         'tbl.filamentCost':'फिलामेंट लागत','tbl.totalCost':'कुल लागत','tbl.sellingPrice':'बिक्री मूल्य',
         'tbl.empty':'विभिन्न फिलामेंट की तुलना करने के लिए "सामग्री जोड़ें" पर क्लिक करें',
+        'lbl.filamentColor':'फिलामेंट का रंग',
         'hist.title':'गणना इतिहास','hist.clear':'इतिहास मिटाएं','hist.close':'बंद करें',
         'calc.calculating':'गणना हो रही है...',
+        'pdf.title':'3D प्रिंट कोटेशन','pdf.reference':'संदर्भ','pdf.emitter':'प्रेषक','pdf.client':'ग्राहक',
+        'pdf.sellingPrice':'बिक्री मूल्य','pdf.details':'परियोजना विवरण','pdf.printTime':'प्रिंट समय',
+        'pdf.piece':'भाग','pdf.pieces':'भाग ({n} फ़ाइलें)',
+        'pdf.noteTitle':'इस मूल्य में शामिल है:',
+        'pdf.noteBody':'श्रम ({h}h पर {r} €/h), फिलामेंट, बिजली की खपत, मशीन का मूल्यह्रास, रखरखाव और संभावित प्रिंट विफलताओं के लिए प्रावधान। शिपिंग लागत शामिल नहीं है।',
+        'pdf.preview3d':'3D पूर्वावलोकन',
+        'pdf.footer':'यह कोटेशन केवल सूचनात्मक है। परियोजना की वास्तविक जटिलता के आधार पर कीमतें भिन्न हो सकती हैं।',
     },
 };
 
@@ -344,16 +412,6 @@ const autoSaveConfig = debounce(function() {
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', function() {
-    // Gestion du panneau des paramètres avancés
-    const toggleBtn = document.getElementById('toggleAdvanced');
-    const advancedParams = document.getElementById('advancedParams');
-    const advancedIcon = document.getElementById('advancedIcon');
-
-    toggleBtn.addEventListener('click', function() {
-        advancedParams.classList.toggle('hidden');
-        advancedIcon.classList.toggle('rotate-180');
-    });
-
     // Mise à jour de la densité selon le type de filament
     document.getElementById('filamentType').addEventListener('change', function() {
         const type = this.value;
@@ -385,6 +443,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Charger les matériaux de comparaison sauvegardés
     loadComparisonMaterials();
+
+    // Initialiser la liste de clients
+    renderClientSelect();
 
     // Appliquer la langue sauvegardée
     const savedLocale = localStorage.getItem('ced-locale') || 'fr';
@@ -896,6 +957,12 @@ async function exportPDF() {
     showNotification('Génération du devis PDF en cours...', 'info');
 
     try {
+        // Langue active (Hindi replié sur EN : Devanagari non supporté par les polices PDF par défaut)
+        const lang = localStorage.getItem('ced-locale') || 'fr';
+        const pdfLang = lang === 'hi' ? 'en' : lang;
+        const t = TRANSLATIONS[pdfLang] || TRANSLATIONS['fr'];
+        const p = (key) => t[key] || TRANSLATIONS['fr'][key] || key;
+
         // Récupérer les données entreprise depuis le SaaS (ou fallback local)
         const company = await fetchCompanyProfile();
 
@@ -966,18 +1033,20 @@ async function exportPDF() {
             doc.text('Services d\'impression 3D professionnels', margin, 33);
         }
 
-        // Informations contact à droite
+        // Informations contact à droite (seulement si renseignées)
         doc.setFontSize(9);
         doc.setTextColor(...white);
         doc.setFont('helvetica', 'normal');
-        doc.text(company.website,  pageWidth - margin, 14, { align: 'right' });
-        doc.text(company.email,    pageWidth - margin, 21, { align: 'right' });
-        doc.text(company.phone,    pageWidth - margin, 28, { align: 'right' });
+        let contactY = 14;
+        if (company.website)  { doc.text(company.website,  pageWidth - margin, contactY, { align: 'right' }); contactY += 7; }
+        if (company.email)    { doc.text(company.email,    pageWidth - margin, contactY, { align: 'right' }); contactY += 7; }
+        if (company.phone)    { doc.text(company.phone,    pageWidth - margin, contactY, { align: 'right' }); }
         doc.setTextColor(...cedCyan);
         doc.setFont('helvetica', 'bold');
 
-        // Date du devis
-        const date = new Date().toLocaleDateString('fr-FR', {
+        // Date du devis (formatée selon la langue active)
+        const localeMap = { fr:'fr-FR', en:'en-GB', nl:'nl-NL', de:'de-DE', es:'es-ES', hi:'en-GB' };
+        const date = new Date().toLocaleDateString(localeMap[lang] || 'fr-FR', {
             day: '2-digit',
             month: 'long',
             year: 'numeric'
@@ -993,7 +1062,7 @@ async function exportPDF() {
         doc.setFontSize(22);
         doc.setTextColor(...cedDarkBlue);
         doc.setFont('helvetica', 'bold');
-        doc.text('DEVIS D\'IMPRESSION 3D', pageWidth / 2, y, { align: 'center' });
+        doc.text(p('pdf.title'), pageWidth / 2, y, { align: 'center' });
 
         // Numéro de devis
         y += 10;
@@ -1001,256 +1070,248 @@ async function exportPDF() {
         doc.setTextColor(...darkGray);
         doc.setFont('helvetica', 'normal');
         const devisNum = 'DEV-' + Date.now().toString().slice(-8);
-        doc.text(`Référence : ${devisNum}`, pageWidth / 2, y, { align: 'center' });
+        doc.text(`${p('pdf.reference')} : ${devisNum}`, pageWidth / 2, y, { align: 'center' });
 
         // ==========================================
-        // BLOC ÉMETTEUR
+        // BLOC ÉMETTEUR | CLIENT (deux colonnes)
         // ==========================================
-
-        y += 16;
-
-        const infoBoxWidth = (pageWidth - margin * 2);
-        doc.setFillColor(240, 248, 255);
-        doc.setDrawColor(...cedCyan);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(margin, y - 4, infoBoxWidth, 28, 2, 2, 'FD');
-
-        // Colonne gauche : nom + adresse
-        doc.setFontSize(10);
-        doc.setTextColor(...cedDarkBlue);
-        doc.setFont('helvetica', 'bold');
-        doc.text(company.name, margin + 5, y + 2);
-
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(60, 80, 100);
-        doc.text(company.address + ' – ' + company.city, margin + 5, y + 9);
-        doc.text('TVA : ' + company.vat, margin + 5, y + 16);
-
-        // Colonne droite : IBAN + banque + gérant
-        const rightCol = pageWidth - margin - 5;
-        doc.setTextColor(60, 80, 100);
-        doc.text('IBAN : ' + company.iban + ' (' + company.bank + ')', rightCol, y + 2,  { align: 'right' });
-        doc.text(company.manager + ' – ' + company.managerTitle,             rightCol, y + 9,  { align: 'right' });
-
-        // ==========================================
-        // SECTION PARAMÈTRES DU PROJET
-        // ==========================================
-
-        y += 38;
-
-        // Titre de section avec fond
-        doc.setFillColor(...cedSecondary);
-        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 12, 2, 2, 'F');
-        doc.setFontSize(12);
-        doc.setTextColor(...white);
-        doc.setFont('helvetica', 'bold');
-        doc.text('PARAMÈTRES DU PROJET', margin + 5, y + 2);
-
-        y += 18;
-
-        // Tableau des paramètres
-        const params = [
-            ['Type de matériau', document.getElementById('filamentType').value],
-            ['Prix du filament', document.getElementById('filamentPrice').value + ' €/kg'],
-            ['Poids de filament', document.getElementById('filamentWeight').value + ' g'],
-            ['Temps d\'impression', document.getElementById('totalTime').value],
-            ['Consommation électrique', document.getElementById('powerConsumption').value + ' W'],
-            ['Tarif électricité', document.getElementById('electricityPrice').value + ' €/kWh']
-        ];
-
-        doc.setFontSize(10);
-        const colWidth = (pageWidth - (margin * 2)) / 2;
-
-        params.forEach((param, index) => {
-            // Fond alterné
-            if (index % 2 === 0) {
-                doc.setFillColor(245, 247, 250);
-                doc.rect(margin, y - 4, pageWidth - (margin * 2), 8, 'F');
-            }
-
-            doc.setTextColor(...darkGray);
-            doc.setFont('helvetica', 'normal');
-            doc.text(param[0], margin + 5, y);
-
-            doc.setTextColor(...cedDarkBlue);
-            doc.setFont('helvetica', 'bold');
-            doc.text(param[1], pageWidth - margin - 5, y, { align: 'right' });
-
-            y += 8;
-        });
-
-        // ==========================================
-        // SECTION DÉCOMPOSITION DES COÛTS
-        // ==========================================
-
-        y += 12;
-
-        // Titre de section
-        doc.setFillColor(...cedSecondary);
-        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 12, 2, 2, 'F');
-        doc.setFontSize(12);
-        doc.setTextColor(...white);
-        doc.setFont('helvetica', 'bold');
-        doc.text('DÉCOMPOSITION DES COÛTS', margin + 5, y + 2);
-
-        y += 18;
-
-        // En-tête du tableau des coûts
-        doc.setFillColor(...cedCard);
-        doc.rect(margin, y - 5, pageWidth - (margin * 2), 8, 'F');
-        doc.setFontSize(9);
-        doc.setTextColor(...white);
-        doc.setFont('helvetica', 'bold');
-        doc.text('POSTE DE COÛT', margin + 5, y);
-        doc.text('MONTANT HT', pageWidth - margin - 5, y, { align: 'right' });
 
         y += 10;
 
-        const costs = [
-            ['Matière première (filament)', document.getElementById('filamentCost').textContent],
-            ['Énergie électrique', document.getElementById('electricityCost').textContent],
-            ['Amortissement machine', document.getElementById('depreciationCost').textContent],
-            ['Maintenance équipement', document.getElementById('maintenanceCostDisplay').textContent],
-            ['Main-d\'œuvre', document.getElementById('laborCostDisplay').textContent.split('(')[0].trim()],
-            ['Provision pour échecs', document.getElementById('failureCost').textContent]
-        ];
+        const colW = (pageWidth - margin * 2 - 5) / 2;
+        const clientX = margin + colW + 5;
+        const blockH = 28;
 
-        doc.setFontSize(10);
-        costs.forEach((cost, index) => {
-            // Fond alterné
-            if (index % 2 === 0) {
-                doc.setFillColor(250, 251, 252);
-                doc.rect(margin, y - 4, pageWidth - (margin * 2), 8, 'F');
-            }
-
-            doc.setTextColor(60, 60, 60);
-            doc.setFont('helvetica', 'normal');
-            doc.text(cost[0], margin + 5, y);
-
-            doc.setTextColor(...cedDarkBlue);
-            doc.text(cost[1], pageWidth - margin - 5, y, { align: 'right' });
-
-            y += 8;
-        });
-
-        // ==========================================
-        // TOTAUX AVEC MISE EN VALEUR
-        // ==========================================
-
-        y += 5;
-
-        // Ligne de séparation
-        doc.setDrawColor(...cedCyan);
-        doc.setLineWidth(0.5);
-        doc.line(margin, y, pageWidth - margin, y);
-
-        y += 12;
-
-        // Coût de revient
-        doc.setFillColor(240, 253, 255);
-        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 14, 2, 2, 'F');
+        // --- Émetteur (gauche) ---
+        doc.setFillColor(240, 248, 255);
         doc.setDrawColor(...cedCyan);
         doc.setLineWidth(0.3);
-        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 14, 2, 2, 'S');
+        doc.roundedRect(margin, y - 4, colW, blockH, 2, 2, 'FD');
 
-        doc.setFontSize(12);
+        doc.setFontSize(7.5);
+        doc.setTextColor(...cedCyan);
+        doc.setFont('helvetica', 'bold');
+        doc.text(p('pdf.emitter'), margin + 4, y + 1);
+
+        doc.setFontSize(9);
         doc.setTextColor(...cedDarkBlue);
         doc.setFont('helvetica', 'bold');
-        doc.text('COÛT DE REVIENT', margin + 5, y + 2);
+        if (company.name)    doc.text(company.name,    margin + 4, y + 8);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 80, 100);
+        const addrLine = [company.address, company.city].filter(Boolean).join(' – ');
+        if (addrLine)        doc.text(addrLine,         margin + 4, y + 14);
+        if (company.vat)     doc.text('TVA : ' + company.vat, margin + 4, y + 19);
+        if (!addrLine && company.website) doc.text(company.website, margin + 4, y + 14);
 
-        doc.setFontSize(14);
-        doc.setTextColor(...cedCyan);
-        doc.text(document.getElementById('totalCost').textContent, pageWidth - margin - 5, y + 2, { align: 'right' });
+        // --- Client (droite) ---
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(210, 220, 230);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(clientX, y - 4, colW, blockH, 2, 2, 'FD');
 
-        y += 22;
+        doc.setFontSize(7.5);
+        doc.setTextColor(...darkGray);
+        doc.setFont('helvetica', 'bold');
+        doc.text(p('pdf.client'), clientX + 4, y + 1);
 
-        // Prix de vente suggéré (mise en valeur forte)
+        // Données client sélectionné
+        const client = getCurrentClient();
+        if (client) {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...cedDarkBlue);
+            doc.text(client.name, clientX + 4, y + 8);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(60, 80, 100);
+            if (client.company) doc.text(client.company, clientX + 4, y + 14);
+            const addrLine = [client.address, [client.postalCode, client.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+            if (addrLine) doc.text(addrLine, clientX + 4, client.company ? y + 19 : y + 14);
+        } else {
+            doc.setFontSize(8.5);
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(190, 200, 210);
+            doc.text('—', clientX + 4, y + 10);
+        }
+
+        y += blockH + 10;
+
+        // ==========================================
+        // PRIX DE VENTE - Mise en valeur principale
+        // ==========================================
+
         doc.setFillColor(...cedCyan);
-        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 18, 3, 3, 'F');
+        doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 14, 3, 3, 'F');
 
-        doc.setFontSize(13);
+        doc.setFontSize(11);
         doc.setTextColor(...white);
         doc.setFont('helvetica', 'bold');
-        doc.text('PRIX DE VENTE CONSEILLÉ', margin + 5, y + 4);
+        doc.text(p('pdf.sellingPrice'), margin + 5, y + 2);
 
         doc.setFontSize(18);
-        doc.text(document.getElementById('sellingPrice').textContent, pageWidth - margin - 5, y + 4, { align: 'right' });
+        doc.text(document.getElementById('sellingPrice').textContent, pageWidth - margin - 5, y + 2, { align: 'right' });
+
+        y += 16;
 
         // ==========================================
-        // STATISTIQUES COMPLÉMENTAIRES
+        // DÉTAILS DU PROJET
         // ==========================================
 
-        y += 30;
-
-        // Titre de section
         doc.setFillColor(...cedSecondary);
         doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 12, 2, 2, 'F');
         doc.setFontSize(12);
         doc.setTextColor(...white);
         doc.setFont('helvetica', 'bold');
-        doc.text('INDICATEURS', margin + 5, y + 2);
+        doc.text(p('pdf.details'), margin + 5, y + 2);
 
-        y += 18;
+        y += 15;
 
-        // Statistiques en colonnes
-        const stats = [
-            ['Coût / gramme', document.getElementById('costPerGram').textContent],
-            ['Coût / heure', document.getElementById('costPerHour').textContent],
-            ['Volume estimé', document.getElementById('volume').textContent]
-        ];
+        // Temps depuis le span récapitulatif (évite le conflit d'IDs avec l'input des paramètres)
+        const timeSpan = Array.from(document.querySelectorAll('#totalTime')).find(el => el.tagName === 'SPAN');
+        const printTimeStr = (timeSpan && timeSpan.textContent && timeSpan.textContent !== '-') ? timeSpan.textContent : '-';
 
-        const statWidth = (pageWidth - (margin * 2) - 20) / 3;
+        doc.setFontSize(10);
+        let detailIndex = 0;
 
-        stats.forEach((stat, index) => {
-            const x = margin + (index * (statWidth + 10));
-
-            // Boîte de statistique
-            doc.setFillColor(248, 250, 252);
-            doc.setDrawColor(226, 232, 240);
-            doc.roundedRect(x, y - 4, statWidth, 25, 2, 2, 'FD');
-
-            doc.setFontSize(8);
+        const drawDetailRow = (label, value) => {
+            if (detailIndex % 2 === 0) {
+                doc.setFillColor(245, 247, 250);
+                doc.rect(margin, y - 4, pageWidth - (margin * 2), 8, 'F');
+            }
             doc.setTextColor(...darkGray);
             doc.setFont('helvetica', 'normal');
-            doc.text(stat[0], x + statWidth / 2, y + 3, { align: 'center' });
-
-            doc.setFontSize(12);
+            doc.text(label, margin + 5, y);
             doc.setTextColor(...cedDarkBlue);
             doc.setFont('helvetica', 'bold');
-            doc.text(stat[1], x + statWidth / 2, y + 14, { align: 'center' });
-        });
+            doc.text(value, pageWidth - margin - 5, y, { align: 'right' });
+            y += 8;
+            detailIndex++;
+        };
+
+        drawDetailRow(p('pdf.printTime'), printTimeStr);
+        drawDetailRow(p('res.filament'), document.getElementById('filamentType').value);
+
+        // Couleur du filament (si renseignée)
+        const filamentColorHex = document.getElementById('filamentColor')?.value || '#ffffff';
+        const filamentColorName = document.getElementById('filamentColorName')?.value?.trim() || '';
+        const hasFilamentColor = filamentColorName || (filamentColorHex.toLowerCase() !== '#ffffff');
+        if (hasFilamentColor) {
+            if (detailIndex % 2 === 0) {
+                doc.setFillColor(245, 247, 250);
+                doc.rect(margin, y - 4, pageWidth - (margin * 2), 8, 'F');
+            }
+            doc.setTextColor(...darkGray);
+            doc.setFont('helvetica', 'normal');
+            doc.text(p('lbl.filamentColor'), margin + 5, y);
+
+            const hexToRgb = (hex) => [
+                parseInt(hex.slice(1, 3), 16),
+                parseInt(hex.slice(3, 5), 16),
+                parseInt(hex.slice(5, 7), 16)
+            ];
+            const colorLabel = filamentColorName || filamentColorHex;
+            const [cr, cg, cb] = hexToRgb(filamentColorHex);
+            const colorTextX = pageWidth - margin - 5;
+            doc.setFont('helvetica', 'bold');
+            const colorTextWidth = doc.getTextWidth(colorLabel);
+            const swatchX = colorTextX - colorTextWidth - 7;
+            doc.setFillColor(cr, cg, cb);
+            doc.setDrawColor(150, 150, 150);
+            doc.setLineWidth(0.3);
+            doc.circle(swatchX, y - 2, 2.5, 'FD');
+            doc.setTextColor(...cedDarkBlue);
+            doc.text(colorLabel, colorTextX, y, { align: 'right' });
+
+            y += 8;
+            detailIndex++;
+        }
+
+        // Pièces : toujours affichées si des fichiers sont chargés
+        const parts = window.importedParts || [];
+        if (parts.length > 0) {
+            const label = parts.length > 1 ? p('pdf.pieces').replace('{n}', parts.length) : p('pdf.piece');
+            const partsSummary = parts.map(p => p.name + (p.quantity > 1 ? ' ×' + p.quantity : '')).join(', ');
+            const maxWidth = pageWidth - margin * 2 - 90;
+            const split = doc.splitTextToSize(partsSummary, maxWidth);
+            const display = split[0] + (split.length > 1 ? '…' : '');
+            drawDetailRow(label, display);
+        }
+
+        y += 6;
 
         // ==========================================
-        // CAPTURE DU GRAPHIQUE
+        // NOTE SUR LA COMPOSITION DU PRIX
+        // ==========================================
+
+        doc.setFontSize(9);
+        const laborHoursVal = document.getElementById('laborHours').value;
+        const laborRateVal = document.getElementById('laborCost').value;
+        const noteText = p('pdf.noteBody').replace('{h}', laborHoursVal).replace('{r}', laborRateVal);
+        const noteLines = doc.splitTextToSize(noteText, pageWidth - (margin * 2) - 10);
+        const noteLineH = 4.5;
+        const noteBoxH = 6 + noteLines.length * noteLineH + 3;
+
+        doc.setFillColor(240, 248, 255);
+        doc.setDrawColor(...cedCyan);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, y - 3, pageWidth - (margin * 2), noteBoxH, 2, 2, 'FD');
+
+        doc.setTextColor(...cedDarkBlue);
+        doc.setFont('helvetica', 'bolditalic');
+        doc.text(p('pdf.noteTitle'), margin + 5, y + 2);
+
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(60, 80, 100);
+        doc.text(noteLines, margin + 5, y + 8);
+
+        y += noteBoxH + 4;
+
+        // ==========================================
+        // APERÇU 3D DE LA PIÈCE
         // ==========================================
 
         try {
-            const chartCanvas = document.getElementById('costChart');
-            if (chartCanvas && costChart) {
-                const chartImage = chartCanvas.toDataURL('image/png', 1.0);
+            // Priorité 1 : vignette extraite du .3mf (plate_1.png)
+            // Priorité 2 : capture du canvas Three.js (avec preserveDrawingBuffer)
+            let previewImage = null;
 
-                y += 40;
+            if (window._3mfThumbnail) {
+                previewImage = window._3mfThumbnail;
+            } else {
+                const preview3DCanvas = document.getElementById('stl3DCanvas');
+                if (preview3DCanvas && preview3DCanvas.width > 0) {
+                    if (window._3dRenderer && window._3dScene && window._3dCamera) {
+                        window._3dRenderer.render(window._3dScene, window._3dCamera);
+                    }
+                    previewImage = preview3DCanvas.toDataURL('image/png', 1.0);
+                }
+            }
 
-                // Titre section graphique
+            if (previewImage) {
                 doc.setFillColor(...cedSecondary);
                 doc.roundedRect(margin, y - 6, pageWidth - (margin * 2), 12, 2, 2, 'F');
                 doc.setFontSize(12);
                 doc.setTextColor(...white);
                 doc.setFont('helvetica', 'bold');
-                doc.text('RÉPARTITION DES COÛTS', margin + 5, y + 2);
+                doc.text(p('pdf.preview3d'), margin + 5, y + 2);
 
-                y += 15;
+                y += 14;
 
-                // Ajouter le graphique centré
-                const chartWidth = 80;
-                const chartHeight = 80;
-                const chartX = (pageWidth - chartWidth) / 2;
+                const previewWidth = 70;
+                const previewHeight = 44;
+                const previewX = (pageWidth - previewWidth) / 2;
 
-                doc.addImage(chartImage, 'PNG', chartX, y, chartWidth, chartHeight);
+                doc.setFillColor(...cedDarkBlue);
+                doc.roundedRect(previewX - 3, y - 2, previewWidth + 6, previewHeight + 4, 3, 3, 'F');
+
+                doc.addImage(previewImage, 'PNG', previewX, y, previewWidth, previewHeight);
+
+                y += previewHeight + 8;
             }
-        } catch (chartError) {
-            console.log('Graphique non disponible pour le PDF:', chartError);
+        } catch (previewError) {
+            console.log('Aperçu 3D non disponible pour le PDF:', previewError);
         }
 
         // ==========================================
@@ -1269,7 +1330,7 @@ async function exportPDF() {
         doc.setFontSize(8);
         doc.setTextColor(...lightGray);
         doc.setFont('helvetica', 'normal');
-        doc.text('Ce devis est établi à titre indicatif. Les prix peuvent varier selon la complexité réelle du projet.', pageWidth / 2, pageHeight - 18, { align: 'center' });
+        doc.text(p('pdf.footer'), pageWidth / 2, pageHeight - 18, { align: 'center' });
 
         doc.setFontSize(7.5);
         doc.text(
@@ -1569,7 +1630,9 @@ function addComparisonMaterial() {
         type: document.getElementById('filamentType').value,
         price: parseFloat(document.getElementById('filamentPrice').value),
         density: parseFloat(document.getElementById('filamentDensity').value),
-        weight: parseFloat(document.getElementById('filamentWeight').value)
+        weight: parseFloat(document.getElementById('filamentWeight').value),
+        color: document.getElementById('filamentColor')?.value || '#ffffff',
+        colorName: document.getElementById('filamentColorName')?.value.trim() || ''
     };
     
     // Calculer les coûts pour ce matériau
@@ -1638,6 +1701,12 @@ function updateComparisonTable() {
                        style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent-cyan);">
             </td>
             <td class="py-3 px-2 text-gray-700 font-semibold">${material.type}</td>
+            <td class="py-3 px-2 text-center">
+                <div class="flex items-center justify-center gap-2" title="${material.colorName || ''}">
+                    <span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${material.color || '#ffffff'};border:1px solid rgba(128,128,128,0.35);flex-shrink:0;"></span>
+                    ${material.colorName ? `<span class="text-xs text-gray-500">${material.colorName}</span>` : ''}
+                </div>
+            </td>
             <td class="py-3 px-2 text-right text-gray-600">${material.price.toFixed(2)} €</td>
             <td class="py-3 px-2 text-right text-gray-600">${material.density.toFixed(2)}</td>
             <td class="py-3 px-2 text-right text-gray-700 font-semibold">${material.filamentCost.toFixed(2)} €</td>
@@ -1687,6 +1756,8 @@ function selectComparisonMaterial(id) {
             document.getElementById('filamentType').value = material.type;
             document.getElementById('filamentPrice').value = material.price;
             document.getElementById('filamentDensity').value = material.density;
+            if (document.getElementById('filamentColor')) document.getElementById('filamentColor').value = material.color || '#ffffff';
+            if (document.getElementById('filamentColorName')) document.getElementById('filamentColorName').value = material.colorName || '';
             calculateCost();
             autoSaveConfig();
             showNotification(`Matériau ${material.type} appliqué au calculateur`, 'success');
@@ -1698,6 +1769,162 @@ function selectComparisonMaterial(id) {
 // Exposer les fonctions nécessaires globalement
 window.calculateCost = calculateCost;
 window.exportResults = exportResults;
+// ============================================================
+// GESTION DES CLIENTS
+// ============================================================
+const CLIENTS_STORAGE_KEY = '3dprintClients';
+let currentClientId = null;
+
+function loadClients() {
+    const saved = localStorage.getItem(CLIENTS_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+}
+
+function saveClients(clients) {
+    localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clients));
+}
+
+function renderClientSelect() {
+    const select = document.getElementById('clientSelect');
+    if (!select) return;
+    const clients = loadClients();
+    select.innerHTML = '<option value="">— Aucun client —</option>';
+    clients.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.company ? `${c.name} (${c.company})` : c.name;
+        if (c.id === currentClientId) opt.selected = true;
+        select.appendChild(opt);
+    });
+    updateClientPreview();
+}
+
+function selectClientFromDropdown(id) {
+    currentClientId = id || null;
+    updateClientPreview();
+}
+
+function updateClientPreview() {
+    const preview = document.getElementById('clientPreview');
+    const editBtn = document.getElementById('editClientBtn');
+    const deleteBtn = document.getElementById('deleteClientBtn');
+
+    if (!currentClientId) {
+        preview?.classList.add('hidden');
+        editBtn?.classList.add('hidden');
+        deleteBtn?.classList.add('hidden');
+        return;
+    }
+
+    const client = loadClients().find(c => c.id === currentClientId);
+    if (!client) {
+        currentClientId = null;
+        updateClientPreview();
+        return;
+    }
+
+    preview?.classList.remove('hidden');
+    editBtn?.classList.remove('hidden');
+    deleteBtn?.classList.remove('hidden');
+
+    document.getElementById('clientPreviewName').textContent = client.name;
+    document.getElementById('clientPreviewCompany').textContent = client.company || '';
+    const addr = [client.address, [client.postalCode, client.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    document.getElementById('clientPreviewAddress').textContent = addr;
+    const contact = [client.email, client.phone].filter(Boolean).join(' • ');
+    document.getElementById('clientPreviewContact').textContent = contact;
+}
+
+function openClientModal(clientId) {
+    const modal = document.getElementById('clientModal');
+    const title = document.getElementById('clientModalTitle');
+    const fields = ['clientModalName','clientModalCompany','clientModalEmail','clientModalPhone',
+                    'clientModalAddress','clientModalPostal','clientModalCity','clientModalVat','clientModalNotes'];
+
+    if (clientId) {
+        const client = loadClients().find(c => c.id === clientId);
+        if (!client) return;
+        title.textContent = 'Modifier le client';
+        document.getElementById('clientModalId').value = client.id;
+        document.getElementById('clientModalName').value = client.name || '';
+        document.getElementById('clientModalCompany').value = client.company || '';
+        document.getElementById('clientModalEmail').value = client.email || '';
+        document.getElementById('clientModalPhone').value = client.phone || '';
+        document.getElementById('clientModalAddress').value = client.address || '';
+        document.getElementById('clientModalPostal').value = client.postalCode || '';
+        document.getElementById('clientModalCity').value = client.city || '';
+        document.getElementById('clientModalVat').value = client.vat || '';
+        document.getElementById('clientModalNotes').value = client.notes || '';
+    } else {
+        title.textContent = 'Nouveau client';
+        document.getElementById('clientModalId').value = '';
+        fields.forEach(id => { document.getElementById(id).value = ''; });
+    }
+
+    modal?.classList.remove('hidden');
+    document.getElementById('clientModalName').focus();
+}
+
+function closeClientModal() {
+    document.getElementById('clientModal')?.classList.add('hidden');
+}
+
+function saveClientModal() {
+    const name = document.getElementById('clientModalName').value.trim();
+    if (!name) {
+        showNotification('Le nom du client est obligatoire.', 'error');
+        return;
+    }
+
+    const existingId = document.getElementById('clientModalId').value;
+    const clients = loadClients();
+
+    const clientData = {
+        id: existingId || 'client-' + Date.now(),
+        name,
+        company:    document.getElementById('clientModalCompany').value.trim(),
+        email:      document.getElementById('clientModalEmail').value.trim(),
+        phone:      document.getElementById('clientModalPhone').value.trim(),
+        address:    document.getElementById('clientModalAddress').value.trim(),
+        postalCode: document.getElementById('clientModalPostal').value.trim(),
+        city:       document.getElementById('clientModalCity').value.trim(),
+        vat:        document.getElementById('clientModalVat').value.trim(),
+        notes:      document.getElementById('clientModalNotes').value.trim(),
+    };
+
+    if (existingId) {
+        const idx = clients.findIndex(c => c.id === existingId);
+        if (idx >= 0) clients[idx] = clientData;
+    } else {
+        clients.push(clientData);
+    }
+
+    saveClients(clients);
+    currentClientId = clientData.id;
+    renderClientSelect();
+    closeClientModal();
+    showNotification('Client enregistré.', 'success');
+}
+
+function editSelectedClient() {
+    if (currentClientId) openClientModal(currentClientId);
+}
+
+function deleteSelectedClient() {
+    if (!currentClientId) return;
+    if (!confirm('Supprimer ce client ?')) return;
+    const clients = loadClients().filter(c => c.id !== currentClientId);
+    saveClients(clients);
+    currentClientId = null;
+    renderClientSelect();
+    showNotification('Client supprimé.', 'info');
+}
+
+function getCurrentClient() {
+    if (!currentClientId) return null;
+    return loadClients().find(c => c.id === currentClientId) || null;
+}
+
 window.saveConfig = saveConfig;
 window.loadConfig = loadConfig;
 window.resetToDefaults = resetToDefaults;
@@ -1713,3 +1940,9 @@ window.addComparisonMaterial = addComparisonMaterial;
 window.removeComparisonMaterial = removeComparisonMaterial;
 window.selectComparisonMaterial = selectComparisonMaterial;
 window.applyTranslations = applyTranslations;
+window.openClientModal = openClientModal;
+window.closeClientModal = closeClientModal;
+window.saveClientModal = saveClientModal;
+window.selectClientFromDropdown = selectClientFromDropdown;
+window.editSelectedClient = editSelectedClient;
+window.deleteSelectedClient = deleteSelectedClient;
