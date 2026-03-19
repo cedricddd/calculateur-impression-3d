@@ -109,6 +109,43 @@ async function fetchCompanyProfile() {
 // Capturer le token SSO dès le chargement du script
 captureSsoToken();
 
+/**
+ * Met à jour le bouton de connexion SSO selon l'état du token.
+ */
+function updateSsoButton() {
+    const btn = document.getElementById('btnSsoLogin');
+    const txt = document.getElementById('btnSsoText');
+    if (!btn || !txt) return;
+    const token = localStorage.getItem(TOKEN_KEY);
+    const cached = getCachedProfile();
+    if (token || cached?.name) {
+        btn.classList.add('connected');
+        txt.textContent = cached?.name ? cached.name : 'Connecté';
+    } else {
+        btn.classList.remove('connected');
+        txt.textContent = 'Connexion';
+    }
+}
+
+/**
+ * Déclenche le flux SSO ou déconnecte si déjà connecté.
+ */
+function handleSsoLogin() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const cached = getCachedProfile();
+    if (token || cached?.name) {
+        // Déconnexion : supprimer token et cache
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(PROFILE_CACHE_KEY);
+        updateSsoButton();
+        return;
+    }
+    const redirectUrl = window.location.origin + window.location.pathname;
+    window.location.href = `${SAAS_URL}/auth/app-login?appSlug=${APP_SLUG}&redirectUrl=${encodeURIComponent(redirectUrl)}`;
+}
+
+document.addEventListener('DOMContentLoaded', updateSsoButton);
+
 // Valeurs par défaut pour la densité selon le type de filament
 const filamentDensities = {
     'PLA': 1.24,

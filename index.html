@@ -2007,6 +2007,28 @@
             background: linear-gradient(to right, transparent, rgba(0,212,255,0.2), transparent);
         }
 
+        .btn-sso-login {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            background: rgba(0, 212, 255, 0.08);
+            color: #00d4ff;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            letter-spacing: 0.02em;
+        }
+        .btn-sso-login:hover { background: rgba(0, 212, 255, 0.18); }
+        .btn-sso-login.connected {
+            border-color: rgba(34, 197, 94, 0.5);
+            background: rgba(34, 197, 94, 0.08);
+            color: #22c55e;
+        }
+
         .comparison-table {
             overflow-x: auto;
         }
@@ -2021,7 +2043,7 @@
     </style>
 </head>
 <body class="p-4">
-    <!-- Boutons top-right : Retour SaaS + Langue -->
+    <!-- Boutons top-right : Retour SaaS + Connexion + Langue -->
     <div class="top-actions">
         <!-- Retour au SaaS -->
         <a href="https://saas.ced-it.be" class="btn-back-saas">
@@ -2030,6 +2052,15 @@
             </svg>
             <span class="hidden sm:inline">Retour SaaS</span>
         </a>
+
+        <!-- Bouton connexion / statut -->
+        <button type="button" id="btnSsoLogin" onclick="handleSsoLogin()" class="btn-sso-login" title="Se connecter avec Ced-IT">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span id="btnSsoText">Connexion</span>
+        </button>
 
         <!-- Sélecteur de langue -->
         <div class="lang-switcher" id="langSwitcher">
