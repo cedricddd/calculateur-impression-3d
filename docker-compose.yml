@@ -16,7 +16,7 @@ services:
       - TZ=Europe/Paris
       - PORT=3080
       - SAAS_URL=https://saas.ced-it.be
-      - APP_URL=http://192.168.1.124:3080
+      - APP_URL=https://calculateur-impression-3d.ced-it.be
       - APP_TOKEN_SECRET=${APP_TOKEN_SECRET}
 
     deploy:
