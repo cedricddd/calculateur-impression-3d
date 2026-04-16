@@ -80,7 +80,7 @@ app.get('/api/profile', async (req, res) => {
 });
 
 // ── Fichiers statiques ────────────────────────────────────────────────────────
-app.use(express.static(path.join(__dirname), {
+app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders(res, filePath) {
     if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
       res.setHeader('Cache-Control', 'no-cache');
@@ -91,7 +91,7 @@ app.use(express.static(path.join(__dirname), {
 // ── SPA fallback ─────────────────────────────────────────────────────────────
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api/')) {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
   }
 });
 
