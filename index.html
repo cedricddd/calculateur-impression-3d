@@ -2036,6 +2036,53 @@
             background: rgba(0, 212, 255, 0.08) !important;
             outline: 1px solid rgba(0, 212, 255, 0.3);
         }
+        tr.comparison-editing {
+            background: rgba(245, 158, 11, 0.12) !important;
+            outline: 2px solid #f59e0b !important;
+            outline-offset: -2px;
+        }
+        tr.comparison-editing td {
+            color: #fbbf24 !important;
+            font-weight: 600;
+        }
+        /* Hover : fond clair + texte sombre pour la lisibilité */
+        .comparison-table tbody tr:hover {
+            background: rgba(226, 232, 240, 0.92) !important;
+        }
+        .comparison-table tbody tr:hover td {
+            color: #0f172a !important;
+        }
+        /* Préserver la couleur du badge marque au hover */
+        .comparison-table tbody tr:hover .brand-badge {
+            color: #0066ff !important;
+            background: rgba(0, 102, 255, 0.12) !important;
+        }
+        /* Editing row au hover : texte ambré foncé pour rester lisible sur clair */
+        .comparison-table tbody tr.comparison-editing:hover td {
+            color: #92400e !important;
+        }
+        #btnAddMaterial, #btnUpdateMaterial {
+            background: var(--accent-gradient) !important;
+        }
+        #btnUpdateMaterial {
+            background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        }
+        #btnCancelEdit {
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            background: transparent !important;
+        }
+        .filter-btn {
+            background: none !important;
+            border: none;
+            cursor: pointer;
+            font-size: 10px;
+            color: rgba(160, 160, 180, 0.5);
+            padding: 0 2px;
+            vertical-align: middle;
+            transition: color 0.2s;
+        }
+        .filter-btn:hover { color: var(--accent-cyan); }
         [data-theme="dark"] .border-b,
         [data-theme="dark"] .border-gray-200 {
             border-color: #374151 !important;
@@ -2045,6 +2092,12 @@
 <body class="p-4">
     <!-- Boutons top-right : Retour SaaS + Connexion + Langue -->
     <div class="top-actions">
+        <!-- Bouton aide -->
+        <a href="/guide.html" target="_blank" rel="noopener noreferrer" title="Guide d'utilisation"
+           style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(250,204,21,0.45);background:rgba(250,204,21,0.1);color:#fde047;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;text-decoration:none;transition:all 0.2s;flex-shrink:0;"
+           onmouseover="this.style.borderColor='rgba(250,204,21,0.75)';this.style.background='rgba(250,204,21,0.2)'"
+           onmouseout="this.style.borderColor='rgba(250,204,21,0.45)';this.style.background='rgba(250,204,21,0.1)'">?</a>
+
         <!-- Retour au SaaS -->
         <a href="https://saas.ced-it.be" class="btn-back-saas">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -2386,6 +2439,13 @@
                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg transition">
                                 </div>
                             </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <span data-i18n="lbl.filamentBrand">Marque du filament</span>
+                                </label>
+                                <input type="text" id="filamentBrand" placeholder="Ex: Bambu Lab, Résine 3D, eSun, Polymaker..."
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
+                            </div>
                         </div>
                     </div>
 
@@ -2526,15 +2586,30 @@
                         </div>
                     </div>
 
-                    <!-- Préréglage Bambu Lab A1 -->
-                    <div class="mb-6">
-                        <h3 class="text-xl font-semibold mb-4 flex items-center section-header" style="color: var(--text-primary);">
-                            <i class="fas fa-print mr-2" style="color: #0066ff;"></i><span data-i18n="sec.printer">Imprimante</span>
+                    <!-- Section Imprimante -->
+                    <div class="mb-6 rounded-xl p-4" style="background: linear-gradient(135deg, rgba(0, 102, 255, 0.12) 0%, rgba(0, 212, 255, 0.12) 100%); border: 1px solid rgba(0, 102, 255, 0.35);">
+                        <h3 class="text-xl font-semibold mb-3 flex items-center" style="color: var(--accent-cyan);">
+                            <i class="fas fa-print mr-2"></i>Imprimante
                         </h3>
-                        <div class="flex justify-center">
-                            <button type="button" onclick="loadPreset('bambu-a1')" class="preset-btn p-4 rounded-lg font-semibold transition shadow-md w-full md:w-auto" style="background: rgba(0, 212, 255, 0.15); border: 1px solid var(--border-color); color: var(--accent-cyan);">
-                                <i class="fas fa-cube mr-2"></i><span data-i18n="btn.loadPreset">Charger les paramètres Bambu Lab A1</span>
+                        <div class="flex gap-2 mb-2">
+                            <select id="printerSelect" aria-label="Sélectionner une imprimante" onchange="selectPrinterFromDropdown(this.value)" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg" style="background: var(--bg-card); color: var(--text-primary);">
+                                <option value="">— Aucune imprimante —</option>
+                            </select>
+                            <button type="button" onclick="openPrinterModal(null)" class="px-3 py-2 rounded-lg font-semibold text-white" style="background: var(--accent-gradient);" title="Nouvelle imprimante">
+                                <i class="fas fa-plus"></i>
                             </button>
+                            <button type="button" id="editPrinterBtn" onclick="editSelectedPrinter()" class="px-3 py-2 rounded-lg font-semibold text-white hidden" style="background: rgba(0, 102, 255, 0.8);" title="Modifier">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" id="deletePrinterBtn" onclick="deleteSelectedPrinter()" class="px-3 py-2 rounded-lg font-semibold text-white hidden" style="background: rgba(255, 71, 87, 0.8);" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div id="printerPreview" class="hidden rounded-lg p-3 text-sm" style="background: rgba(0, 102, 255, 0.08); border: 1px solid rgba(0, 102, 255, 0.3);">
+                            <p class="font-semibold" id="printerPreviewName" style="color: var(--accent-cyan);"></p>
+                            <p id="printerPreviewBrand" style="color: var(--text-secondary);"></p>
+                            <p id="printerPreviewSpecs" style="color: var(--text-muted); font-size: 0.75rem;"></p>
+                            <p id="printerPreviewNotes" class="hidden" style="color: var(--text-muted); font-size: 0.75rem; font-style: italic;"></p>
                         </div>
                     </div>
 
@@ -2725,9 +2800,17 @@
                     <h2 class="text-2xl font-bold flex items-center section-header" style="color: var(--text-primary);">
                         <i class="fas fa-balance-scale mr-3" style="color: var(--accent-cyan);"></i><span data-i18n="tbl.compTitle">Comparaison de Matériaux</span>
                     </h2>
-                    <button type="button" onclick="addComparisonMaterial()" class="btn-ced text-white px-6 py-3 rounded-xl transition font-semibold" style="background: var(--accent-gradient);">
-                        <i class="fas fa-plus mr-2"></i><span data-i18n="btn.addMaterial">Ajouter un matériau</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="btnAddMaterial" onclick="addComparisonMaterial()" class="btn-ced text-white px-6 py-3 rounded-xl transition font-semibold">
+                            <i class="fas fa-plus mr-2"></i><span data-i18n="btn.addMaterial">Ajouter un matériau</span>
+                        </button>
+                        <button type="button" id="btnUpdateMaterial" onclick="addComparisonMaterial()" class="hidden btn-ced text-white px-6 py-3 rounded-xl transition font-semibold">
+                            <i class="fas fa-save mr-2"></i>Mettre à jour
+                        </button>
+                        <button type="button" id="btnCancelEdit" onclick="cancelEditComparison()" class="hidden px-4 py-3 rounded-xl transition font-semibold">
+                            Annuler
+                        </button>
+                    </div>
                 </div>
 
                 <div class="comparison-table overflow-x-auto">
@@ -2735,13 +2818,14 @@
                         <thead>
                             <tr style="border-bottom: 2px solid var(--border-color);">
                                 <th class="text-center py-4 px-3 font-semibold" style="color: var(--accent-cyan);" data-i18n="tbl.use">Utiliser</th>
-                                <th class="text-left py-4 px-3 font-semibold" style="color: var(--accent-cyan);" data-i18n="tbl.material">Matériau</th>
-                                <th class="text-center py-4 px-3 font-semibold" style="color: var(--text-secondary);" data-i18n="tbl.color">Couleur</th>
-                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Prix (€/kg)</th>
-                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);">Densité</th>
-                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);" data-i18n="tbl.filamentCost">Coût filament</th>
-                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--text-secondary);" data-i18n="tbl.totalCost">Coût total</th>
-                                <th class="text-right py-4 px-3 font-semibold" style="color: var(--accent-cyan);" data-i18n="tbl.sellingPrice">Prix vente</th>
+                                <th class="text-left py-4 px-3 font-semibold cursor-pointer select-none" style="color: var(--accent-cyan);" data-sort-col="type" onclick="sortComparisonTable('type')" title="Trier par matériau"><span data-i18n="tbl.material">Matériau</span><span class="sort-icon text-xs"> ↕</span><button type="button" class="filter-btn ml-1" onclick="openFilterDropdown('type', event)">&#9660;</button></th>
+                                <th class="text-left py-4 px-3 font-semibold cursor-pointer select-none" style="color: var(--text-secondary);" data-sort-col="brand" onclick="sortComparisonTable('brand')" title="Trier par marque"><span data-i18n="tbl.brand">Marque</span><span class="sort-icon text-xs"> ↕</span><button type="button" class="filter-btn ml-1" onclick="openFilterDropdown('brand', event)">&#9660;</button></th>
+                                <th class="text-center py-4 px-3 font-semibold cursor-pointer select-none" style="color: var(--text-secondary);" data-sort-col="colorName" onclick="sortComparisonTable('colorName')" title="Trier par couleur"><span data-i18n="tbl.color">Couleur</span><span class="sort-icon text-xs"> ↕</span><button type="button" class="filter-btn ml-1" onclick="openFilterDropdown('colorName', event)">&#9660;</button></th>
+                                <th class="text-right py-4 px-3 font-semibold cursor-pointer select-none" style="color: var(--text-secondary);" data-sort-col="price" onclick="sortComparisonTable('price')" title="Trier par prix">Prix (€/kg)<span class="sort-icon text-xs"> ↕</span></th>
+                                <th class="text-right py-4 px-3 font-semibold cursor-pointer select-none" style="color: var(--text-secondary);" data-sort-col="density" onclick="sortComparisonTable('density')" title="Trier par densité">Densité<span class="sort-icon text-xs"> ↕</span></th>
+                                <th class="text-right py-4 px-3 font-semibold cursor-pointer select-none" style="color: var(--text-secondary);" data-sort-col="filamentCost" onclick="sortComparisonTable('filamentCost')" title="Trier par coût filament"><span data-i18n="tbl.filamentCost">Coût filament</span><span class="sort-icon text-xs"> ↕</span></th>
+                                <th class="text-right py-4 px-3 font-semibold cursor-pointer select-none" style="color: var(--text-secondary);" data-sort-col="totalCost" onclick="sortComparisonTable('totalCost')" title="Trier par coût total"><span data-i18n="tbl.totalCost">Coût total</span><span class="sort-icon text-xs"> ↕</span></th>
+                                <th class="text-right py-4 px-3 font-semibold cursor-pointer select-none" style="color: var(--accent-cyan);" data-sort-col="sellingPrice" onclick="sortComparisonTable('sellingPrice')" title="Trier par prix de vente"><span data-i18n="tbl.sellingPrice">Prix vente</span><span class="sort-icon text-xs"> ↕</span></th>
                                 <th class="text-center py-4 px-3" aria-label="Actions"></th>
                             </tr>
                         </thead>
@@ -2756,6 +2840,60 @@
                         <i class="fas fa-layer-group text-4xl mb-3" style="color: var(--accent-cyan); opacity: 0.5;"></i>
                         <p style="color: var(--text-secondary);" data-i18n="tbl.empty">Cliquez sur "Ajouter un matériau" pour comparer différents filaments</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Imprimante -->
+        <div id="printerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="glass-effect rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold flex items-center" style="color: var(--text-primary);">
+                        <i class="fas fa-print mr-3" style="color: var(--accent-cyan);"></i>
+                        <span id="printerModalTitle">Nouvelle imprimante</span>
+                    </h2>
+                    <button onclick="closePrinterModal()" class="text-gray-500 hover:text-gray-700 text-2xl" aria-label="Fermer">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <input type="hidden" id="printerModalId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="md:col-span-2">
+                        <label for="printerModalName" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Nom de l'imprimante *</label>
+                        <input type="text" id="printerModalName" placeholder="Bambu Lab A1" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="printerModalBrand" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Marque</label>
+                        <input type="text" id="printerModalBrand" placeholder="Bambu Lab, Creality, Prusa…" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="printerModalCost" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Coût d'achat (€)</label>
+                        <input type="number" id="printerModalCost" placeholder="299" min="0" step="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="printerModalPower" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Consommation (W)</label>
+                        <input type="number" id="printerModalPower" placeholder="100" min="0" step="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="printerModalLifespan" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Durée de vie (heures)</label>
+                        <input type="number" id="printerModalLifespan" placeholder="5000" min="1" step="100" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="printerModalMaintenance" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Maintenance (€/heure)</label>
+                        <input type="number" id="printerModalMaintenance" placeholder="0.08" min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="printerModalNotes" class="block text-sm font-medium mb-1" style="color: var(--text-secondary);">Notes</label>
+                        <input type="text" id="printerModalNotes" placeholder="Notes optionnelles" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-2">
+                    <button type="button" onclick="savePrinterModal()" class="flex-1 text-white py-3 rounded-lg font-semibold" style="background: var(--accent-gradient);">
+                        <i class="fas fa-save mr-2"></i>Enregistrer
+                    </button>
+                    <button type="button" onclick="closePrinterModal()" class="flex-1 py-3 rounded-lg font-semibold" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-secondary);">
+                        Annuler
+                    </button>
                 </div>
             </div>
         </div>
@@ -2846,6 +2984,135 @@
                 </div>
             </div>
         </div>
+
+        <!-- Section Paramètres (accordéon) -->
+        <div class="mt-8" id="settingsSection">
+            <div class="glass-effect rounded-2xl overflow-hidden">
+                <!-- En-tête cliquable -->
+                <button type="button" id="settingsToggle" onclick="toggleSettings()"
+                    class="w-full flex items-center justify-between px-6 py-4 text-left transition"
+                    style="background: transparent;">
+                    <span class="text-xl font-bold flex items-center section-header" style="color: var(--text-primary);">
+                        <i class="fas fa-cog mr-3" style="color: var(--accent-cyan);"></i>Paramètres
+                    </span>
+                    <i id="settingsChevron" class="fas fa-chevron-down transition-transform duration-300" style="color: var(--accent-cyan);"></i>
+                </button>
+
+                <!-- Contenu masqué par défaut -->
+                <div id="settingsBody" class="hidden px-6 pb-6">
+                    <!-- Langue -->
+                    <div class="rounded-xl p-5 mb-4" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+                        <h3 class="text-base font-semibold mb-4" style="color: var(--text-primary);">Langue de l'interface</h3>
+                        <div>
+                            <label class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--text-muted);">LANGUE</label>
+                            <div class="relative inline-block">
+                                <button id="langBtnSettings" onclick="document.getElementById('langMenuSettings').classList.toggle('hidden')"
+                                    class="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium"
+                                    style="background: var(--bg-primary); border-color: var(--border-color); color: var(--text-primary); min-width:200px;">
+                                    <span id="langFlagSettings" class="text-lg">🇫🇷</span>
+                                    <span id="langCodeSettings" class="flex-1 text-left">Français</span>
+                                    <i class="fas fa-chevron-down text-xs" style="color: var(--text-muted);"></i>
+                                </button>
+                                <div id="langMenuSettings" class="hidden absolute left-0 mt-1 rounded-xl shadow-lg z-50 overflow-hidden"
+                                    style="background: var(--bg-secondary); border: 1px solid var(--border-color); min-width:200px;">
+                                    <button class="w-full flex items-center gap-3 px-4 py-3 text-sm transition" onclick="pickLangSettings('fr','🇫🇷','Français')"><span class="text-lg">🇫🇷</span><span style="color:var(--text-primary);">Français</span></button>
+                                    <button class="w-full flex items-center gap-3 px-4 py-3 text-sm transition" onclick="pickLangSettings('en','🇬🇧','English')"><span class="text-lg">🇬🇧</span><span style="color:var(--text-primary);">English</span></button>
+                                    <button class="w-full flex items-center gap-3 px-4 py-3 text-sm transition" onclick="pickLangSettings('nl','🇳🇱','Nederlands')"><span class="text-lg">🇳🇱</span><span style="color:var(--text-primary);">Nederlands</span></button>
+                                    <button class="w-full flex items-center gap-3 px-4 py-3 text-sm transition" onclick="pickLangSettings('de','🇩🇪','Deutsch')"><span class="text-lg">🇩🇪</span><span style="color:var(--text-primary);">Deutsch</span></button>
+                                    <button class="w-full flex items-center gap-3 px-4 py-3 text-sm transition" onclick="pickLangSettings('es','🇪🇸','Español')"><span class="text-lg">🇪🇸</span><span style="color:var(--text-primary);">Español</span></button>
+                                    <button class="w-full flex items-center gap-3 px-4 py-3 text-sm transition" onclick="pickLangSettings('hi','🇮🇳','हिन्दी')"><span class="text-lg">🇮🇳</span><span style="color:var(--text-primary);">हिन्दी</span></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Devise -->
+                    <div class="rounded-xl p-5 mb-4" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+                        <h3 class="text-base font-semibold mb-4" style="color: var(--text-primary);">Paramètres généraux</h3>
+                        <label for="currencySelect" class="block text-xs font-semibold mb-2 uppercase tracking-wider" style="color: var(--text-muted);">DEVISE</label>
+                        <select id="currencySelect" onchange="setCurrency(this.value)"
+                            class="px-4 py-2 rounded-lg border text-sm font-medium"
+                            style="background: var(--bg-primary); border-color: var(--border-color); color: var(--text-primary); min-width:220px;">
+                            <option value="EUR">Euro (€)</option>
+                            <option value="USD">Dollar US ($)</option>
+                            <option value="GBP">Livre sterling (£)</option>
+                            <option value="CHF">Franc suisse (CHF)</option>
+                            <option value="CAD">Dollar canadien (CA$)</option>
+                            <option value="MAD">Dirham marocain (DH)</option>
+                            <option value="INR">Roupie indienne (₹)</option>
+                        </select>
+                        <p class="text-xs mt-2" style="color: var(--text-muted);">Utilisée dans tous les calculs et les exports PDF.</p>
+                    </div>
+
+                    <!-- Sauvegarde & restauration -->
+                    <div class="rounded-xl p-5" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+                        <h3 class="text-base font-semibold mb-2" style="color: var(--text-primary);">Sauvegarde &amp; restauration</h3>
+                        <p class="text-sm mb-4" style="color: var(--text-secondary);">
+                            Exportez toutes vos données — matériaux, clients, imprimantes, historique et configuration — pour une sauvegarde locale ou un transfert vers un autre appareil.
+                        </p>
+                        <div class="flex flex-wrap gap-3 mb-3">
+                            <button type="button" onclick="exportAllData()"
+                                class="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition"
+                                style="background: var(--accent-gradient); color: #fff;">
+                                <i class="fas fa-file-export"></i> Exporter la base
+                            </button>
+                            <button type="button" onclick="triggerImport()"
+                                class="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition"
+                                style="background: var(--bg-primary); border: 2px solid var(--accent-cyan); color: var(--accent-cyan);">
+                                <i class="fas fa-file-import"></i> Importer une base
+                            </button>
+                            <input type="file" id="importDataInput" accept=".json" class="hidden"
+                                title="Importer une sauvegarde JSON"
+                                onchange="importAllData(this.files[0]); this.value='';">
+                        </div>
+                        <p class="text-xs" style="color: #f59e0b;">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            L'import <strong>remplace intégralement</strong> vos données actuelles. Pensez à exporter d'abord si vous souhaitez conserver vos données.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        function toggleSettings() {
+            var body = document.getElementById('settingsBody');
+            var chevron = document.getElementById('settingsChevron');
+            var open = !body.classList.contains('hidden');
+            body.classList.toggle('hidden', open);
+            chevron.style.transform = open ? '' : 'rotate(180deg)';
+        }
+
+        function pickLangSettings(code, flag, native) {
+            document.getElementById('langMenuSettings').classList.add('hidden');
+            document.getElementById('langFlagSettings').textContent = flag;
+            document.getElementById('langCodeSettings').textContent = native;
+            localStorage.setItem('ced-locale', code);
+            if (window.applyTranslations) applyTranslations(code);
+            var flagEl = document.getElementById('langFlag');
+            var codeEl = document.getElementById('langCode');
+            if (flagEl) flagEl.textContent = flag;
+            if (codeEl) codeEl.textContent = native;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var saved = localStorage.getItem('ced-locale') || 'fr';
+            var mapping = { fr: ['🇫🇷','Français'], en: ['🇬🇧','English'], nl: ['🇳🇱','Nederlands'], de: ['🇩🇪','Deutsch'], es: ['🇪🇸','Español'], hi: ['🇮🇳','हिन्दी'] };
+            var info = mapping[saved] || mapping['fr'];
+            var flagEl = document.getElementById('langFlagSettings');
+            var codeEl = document.getElementById('langCodeSettings');
+            if (flagEl) flagEl.textContent = info[0];
+            if (codeEl) codeEl.textContent = info[1];
+        });
+
+        document.addEventListener('click', function(e) {
+            var menu = document.getElementById('langMenuSettings');
+            var btn = document.getElementById('langBtnSettings');
+            if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+        </script>
 
         <!-- Footer -->
         <div class="mt-12 mb-6">

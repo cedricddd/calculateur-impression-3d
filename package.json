@@ -4,7 +4,8 @@
   "description": "Calculateur de prix d'impression 3D - Ced-IT",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node --env-file=.env server.js",
+    "dev": "[ -f .env.local ] && node --env-file=.env --env-file=.env.local --watch server.js || node --env-file=.env --watch server.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",

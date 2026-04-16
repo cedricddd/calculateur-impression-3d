@@ -67,6 +67,41 @@ let costChart = null;
 const COMPARISON_STORAGE_KEY = '3dprintComparisonMaterials';
 
 // ============================================================
+// DEVISE (currency)
+// ============================================================
+const CURRENCY_STORAGE_KEY = '3dprintCurrency';
+const CURRENCIES = [
+    { code: 'EUR', symbol: '€',   name: 'Euro (€)' },
+    { code: 'USD', symbol: '$',   name: 'Dollar US ($)' },
+    { code: 'GBP', symbol: '£',   name: 'Livre sterling (£)' },
+    { code: 'CHF', symbol: 'CHF', name: 'Franc suisse (CHF)' },
+    { code: 'CAD', symbol: 'CA$', name: 'Dollar canadien (CA$)' },
+    { code: 'MAD', symbol: 'DH',  name: 'Dirham marocain (DH)' },
+    { code: 'INR', symbol: '₹',  name: 'Roupie indienne (₹)' },
+];
+window.currencySymbol = '€';
+
+function loadCurrencySettings() {
+    const saved = localStorage.getItem(CURRENCY_STORAGE_KEY) || 'EUR';
+    const currency = CURRENCIES.find(c => c.code === saved) || CURRENCIES[0];
+    window.currencySymbol = currency.symbol;
+    const select = document.getElementById('currencySelect');
+    if (select) select.value = saved;
+}
+
+function setCurrency(code) {
+    const currency = CURRENCIES.find(c => c.code === code) || CURRENCIES[0];
+    window.currencySymbol = currency.symbol;
+    localStorage.setItem(CURRENCY_STORAGE_KEY, code);
+    const lang = localStorage.getItem('ced-locale') || 'fr';
+    applyTranslations(lang);
+    calculateCost();
+    updateComparisonTable();
+    renderPrinterSelect();
+    showNotification('Devise mise à jour : ' + currency.name, 'success');
+}
+
+// ============================================================
 // SYSTÈME DE TRADUCTION (i18n)
 // ============================================================
 const TRANSLATIONS = {
@@ -308,9 +343,12 @@ const TRANSLATIONS = {
 
 function applyTranslations(lang) {
     const t = TRANSLATIONS[lang] || TRANSLATIONS['fr'];
+    const sym = window.currencySymbol || '€';
     document.querySelectorAll('[data-i18n]').forEach(function(el) {
         const key = el.getAttribute('data-i18n');
-        if (t[key] !== undefined) el.textContent = t[key];
+        if (t[key] !== undefined) {
+            el.textContent = sym !== '€' ? t[key].replace(/€/g, sym) : t[key];
+        }
     });
 }
 
@@ -379,8 +417,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Charger les matériaux de comparaison sauvegardés
     loadComparisonMaterials();
 
-    // Initialiser la liste de clients
+    // Initialiser la liste d'imprimantes et de clients
+    renderPrinterSelect();
     renderClientSelect();
+
+    // Charger la devise sauvegardée (avant les traductions pour que la devise soit correcte)
+    loadCurrencySettings();
 
     // Appliquer la langue sauvegardée
     const savedLocale = localStorage.getItem('ced-locale') || 'fr';
@@ -523,7 +565,7 @@ function updateDisplay(costs) {
     // Afficher les détails de la main-d'œuvre
     const laborHours = parseFloat(document.getElementById('laborHours').value) || 0;
     const laborRate = parseFloat(document.getElementById('laborCost').value) || 0;
-    document.getElementById('laborCostDisplay').textContent = formatCurrency(costs.laborCost) + ` (${laborHours}h × ${laborRate}€/h)`;
+    document.getElementById('laborCostDisplay').textContent = formatCurrency(costs.laborCost) + ` (${laborHours}h × ${laborRate}${window.currencySymbol || '€'}/h)`;
 
     // Animation du coût total
     animateValue('totalCost', costs.totalCost);
@@ -531,10 +573,9 @@ function updateDisplay(costs) {
 
 // Fonction de formatage des devises
 function formatCurrency(value) {
-    if (isNaN(value) || !isFinite(value)) {
-        return '0.00 €';
-    }
-    return value.toFixed(2) + ' €';
+    const sym = window.currencySymbol || '€';
+    if (isNaN(value) || !isFinite(value)) return '0.00 ' + sym;
+    return value.toFixed(2) + ' ' + sym;
 }
 
 // Animation des valeurs
@@ -1551,6 +1592,10 @@ function clearSTL() {
 
 let comparisonMaterials = [];
 let selectedComparisonId = null;
+let comparisonSort = { key: null, dir: 1 };
+let comparisonFilters = {}; // { colKey: Set<string> } — absent = pas de filtre actif
+let openFilterKey = null;
+let editingComparisonId = null;
 
 // Fonction pour ajouter un matériau à la comparaison
 function addComparisonMaterial() {
@@ -1560,7 +1605,8 @@ function addComparisonMaterial() {
         density: parseFloat(document.getElementById('filamentDensity').value),
         weight: parseFloat(document.getElementById('filamentWeight').value),
         color: document.getElementById('filamentColor')?.value || '#ffffff',
-        colorName: document.getElementById('filamentColorName')?.value.trim() || ''
+        colorName: document.getElementById('filamentColorName')?.value.trim() || '',
+        brand: document.getElementById('filamentBrand')?.value.trim() || ''
     };
     
     // Calculer les coûts pour ce matériau
@@ -1590,6 +1636,19 @@ function addComparisonMaterial() {
     const totalCost = baseCost + failureCostTotal;
     const sellingPrice = totalCost * (1 + profitMargin / 100);
     
+    if (editingComparisonId !== null) {
+        // Mode édition : remplacer l'entrée existante (conserver l'id)
+        const idx = comparisonMaterials.findIndex(m => m.id === editingComparisonId);
+        if (idx !== -1) {
+            comparisonMaterials[idx] = { ...currentFilament, filamentCost: filamentCostTotal, totalCost, sellingPrice, id: editingComparisonId };
+        }
+        cancelEditComparison();
+        saveComparisonMaterials();
+        updateComparisonTable();
+        showNotification(`${currentFilament.type} mis à jour`, 'success');
+        return;
+    }
+
     // Ajouter à la liste
     comparisonMaterials.push({
         ...currentFilament,
@@ -1598,7 +1657,7 @@ function addComparisonMaterial() {
         sellingPrice: sellingPrice,
         id: Date.now()
     });
-    
+
     saveComparisonMaterials();
     updateComparisonTable();
     showNotification(`${currentFilament.type} ajouté à la comparaison`, 'success');
@@ -1616,11 +1675,43 @@ function updateComparisonTable() {
     }
     
     emptyMsg.classList.add('hidden');
-    
-    tbody.innerHTML = comparisonMaterials.map(material => {
+
+    // Mettre à jour les indicateurs de tri et filtre dans les en-têtes
+    document.querySelectorAll('[data-sort-col]').forEach(th => {
+        const icon = th.querySelector('.sort-icon');
+        if (icon) icon.textContent = comparisonSort.key === th.dataset.sortCol ? (comparisonSort.dir === 1 ? ' ↑' : ' ↓') : ' ↕';
+        const btn = th.querySelector('.filter-btn');
+        if (btn) {
+            const hasFilter = !!comparisonFilters[th.dataset.sortCol];
+            btn.style.color = hasFilter ? 'var(--accent-cyan)' : 'rgba(160,160,180,0.5)';
+            btn.title = hasFilter ? 'Filtre actif — cliquer pour modifier' : 'Filtrer';
+        }
+    });
+
+    let sorted = [...comparisonMaterials];
+    if (comparisonSort.key) {
+        sorted.sort((a, b) => {
+            const av = (a[comparisonSort.key] ?? '').toString().toLowerCase();
+            const bv = (b[comparisonSort.key] ?? '').toString().toLowerCase();
+            const an = parseFloat(av), bn = parseFloat(bv);
+            const cmp = isNaN(an) || isNaN(bn) ? av.localeCompare(bv) : an - bn;
+            return cmp * comparisonSort.dir;
+        });
+    }
+
+    // Appliquer les filtres actifs
+    let filtered = sorted;
+    Object.entries(comparisonFilters).forEach(([key, allowed]) => {
+        if (allowed) {
+            filtered = filtered.filter(m => allowed.has((m[key] ?? '').toString()));
+        }
+    });
+
+    tbody.innerHTML = filtered.map(material => {
         const isSelected = selectedComparisonId === material.id;
+        const isEditing = editingComparisonId === material.id;
         return `
-        <tr class="border-b border-gray-200 hover:bg-gray-50 transition${isSelected ? ' comparison-selected' : ''}">
+        <tr class="border-b border-gray-200 hover:bg-gray-50 transition${isSelected ? ' comparison-selected' : ''}${isEditing ? ' comparison-editing' : ''}">
             <td class="py-3 px-2 text-center">
                 <input type="checkbox"
                        ${isSelected ? 'checked' : ''}
@@ -1629,19 +1720,23 @@ function updateComparisonTable() {
                        style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent-cyan);">
             </td>
             <td class="py-3 px-2 text-gray-700 font-semibold">${material.type}</td>
+            <td class="py-3 px-2 text-gray-600">${material.brand ? `<span class="brand-badge text-xs font-medium px-2 py-0.5 rounded" style="background:rgba(0,212,255,0.1);color:var(--accent-cyan);">${material.brand}</span>` : '<span class="text-gray-400 text-xs">—</span>'}</td>
             <td class="py-3 px-2 text-center">
                 <div class="flex items-center justify-center gap-2" title="${material.colorName || ''}">
                     <span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${material.color || '#ffffff'};border:1px solid rgba(128,128,128,0.35);flex-shrink:0;"></span>
                     ${material.colorName ? `<span class="text-xs text-gray-500">${material.colorName}</span>` : ''}
                 </div>
             </td>
-            <td class="py-3 px-2 text-right text-gray-600">${material.price.toFixed(2)} €</td>
+            <td class="py-3 px-2 text-right text-gray-600">${material.price.toFixed(2)} ${window.currencySymbol || '€'}</td>
             <td class="py-3 px-2 text-right text-gray-600">${material.density.toFixed(2)}</td>
-            <td class="py-3 px-2 text-right text-gray-700 font-semibold">${material.filamentCost.toFixed(2)} €</td>
-            <td class="py-3 px-2 text-right text-gray-800 font-bold">${material.totalCost.toFixed(2)} €</td>
-            <td class="py-3 px-2 text-right text-green-600 font-bold">${material.sellingPrice.toFixed(2)} €</td>
-            <td class="py-3 px-2 text-center">
-                <button onclick="removeComparisonMaterial(${material.id})" class="text-red-500 hover:text-red-700 transition">
+            <td class="py-3 px-2 text-right text-gray-700 font-semibold">${material.filamentCost.toFixed(2)} ${window.currencySymbol || '€'}</td>
+            <td class="py-3 px-2 text-right text-gray-800 font-bold">${material.totalCost.toFixed(2)} ${window.currencySymbol || '€'}</td>
+            <td class="py-3 px-2 text-right text-green-600 font-bold">${material.sellingPrice.toFixed(2)} ${window.currencySymbol || '€'}</td>
+            <td class="py-3 px-2 text-center" style="white-space:nowrap;">
+                <button onclick="editComparisonMaterial(${material.id})" class="mr-2 hover:text-yellow-400 transition" style="background:none;border:none;cursor:pointer;color:${isEditing ? '#f59e0b' : 'rgba(160,160,180,0.5)'};" title="Modifier">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button onclick="removeComparisonMaterial(${material.id})" class="text-red-500 hover:text-red-700 transition" style="background:none;border:none;cursor:pointer;" title="Supprimer">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -1672,6 +1767,134 @@ function loadComparisonMaterials() {
     }
 }
 
+function sortComparisonTable(key) {
+    if (comparisonSort.key === key) {
+        comparisonSort.dir *= -1;
+    } else {
+        comparisonSort.key = key;
+        comparisonSort.dir = 1;
+    }
+    updateComparisonTable();
+}
+
+function editComparisonMaterial(id) {
+    const material = comparisonMaterials.find(m => m.id === id);
+    if (!material) return;
+    editingComparisonId = id;
+
+    // Pré-remplir le formulaire
+    document.getElementById('filamentType').value = material.type;
+    document.getElementById('filamentPrice').value = material.price;
+    document.getElementById('filamentDensity').value = material.density;
+    document.getElementById('filamentWeight').value = material.weight;
+    if (document.getElementById('filamentColor')) document.getElementById('filamentColor').value = material.color || '#ffffff';
+    if (document.getElementById('filamentColorName')) document.getElementById('filamentColorName').value = material.colorName || '';
+    if (document.getElementById('filamentBrand')) document.getElementById('filamentBrand').value = material.brand || '';
+
+    // Basculer les boutons
+    document.getElementById('btnAddMaterial').classList.add('hidden');
+    document.getElementById('btnUpdateMaterial').classList.remove('hidden');
+    document.getElementById('btnCancelEdit').classList.remove('hidden');
+
+    // Scroller vers le formulaire
+    document.getElementById('filamentType').closest('section,div')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    calculateCost();
+    updateComparisonTable();
+}
+
+function cancelEditComparison() {
+    editingComparisonId = null;
+    document.getElementById('btnAddMaterial').classList.remove('hidden');
+    document.getElementById('btnUpdateMaterial').classList.add('hidden');
+    document.getElementById('btnCancelEdit').classList.add('hidden');
+    updateComparisonTable();
+}
+
+function openFilterDropdown(key, event) {
+    event.stopPropagation();
+    const existing = document.getElementById('compFilterDropdown');
+    if (existing) {
+        existing.remove();
+        if (openFilterKey === key) { openFilterKey = null; return; }
+    }
+    openFilterKey = key;
+
+    const allValues = [...new Set(comparisonMaterials.map(m => (m[key] ?? '').toString()))].sort();
+    const activeFilter = comparisonFilters[key];
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const dropdown = document.createElement('div');
+    dropdown.id = 'compFilterDropdown';
+    dropdown.style.cssText = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left}px;z-index:9999;` +
+        `background:var(--card-bg,#0f1b3d);border:1px solid var(--border-color,#1e3a5f);border-radius:10px;` +
+        `padding:10px;min-width:180px;max-height:300px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5);`;
+
+    const allChecked = !activeFilter;
+    dropdown.innerHTML = `
+        <div style="padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border-color,#1e3a5f);">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--accent-cyan,#00d4ff);font-weight:600;">
+                <input type="checkbox" id="compFilterAll" ${allChecked ? 'checked' : ''} style="accent-color:var(--accent-cyan,#00d4ff);cursor:pointer;width:14px;height:14px;">
+                Tout sélectionner
+            </label>
+        </div>
+        ${allValues.map(v => {
+            const checked = !activeFilter || activeFilter.has(v);
+            const label = v || '<em style="opacity:.5">vide</em>';
+            return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-primary,#e2e8f0);padding:4px 0;">
+                <input type="checkbox" data-fv="${v}" ${checked ? 'checked' : ''} style="accent-color:var(--accent-cyan,#00d4ff);cursor:pointer;width:14px;height:14px;">
+                ${label}
+            </label>`;
+        }).join('')}
+        ${Object.keys(comparisonFilters).length > 0 ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-color,#1e3a5f);">
+            <button onclick="clearAllComparisonFilters()" style="font-size:11px;color:var(--accent-cyan);background:none;border:none;cursor:pointer;padding:0;">
+                ✕ Effacer tous les filtres
+            </button>
+        </div>` : ''}
+    `;
+
+    document.body.appendChild(dropdown);
+
+    const allCb = dropdown.querySelector('#compFilterAll');
+    const valueCbs = () => [...dropdown.querySelectorAll('[data-fv]')];
+
+    allCb.addEventListener('change', e => {
+        valueCbs().forEach(cb => cb.checked = e.target.checked);
+        if (e.target.checked) delete comparisonFilters[key];
+        else comparisonFilters[key] = new Set();
+        updateComparisonTable();
+    });
+
+    valueCbs().forEach(cb => cb.addEventListener('change', () => {
+        const checked = valueCbs().filter(c => c.checked).map(c => c.dataset.fv);
+        if (checked.length === allValues.length) {
+            delete comparisonFilters[key];
+            allCb.checked = true;
+        } else {
+            comparisonFilters[key] = new Set(checked);
+            allCb.checked = false;
+        }
+        updateComparisonTable();
+    }));
+
+    setTimeout(() => {
+        document.addEventListener('click', function closeFilter(e) {
+            if (!dropdown.contains(e.target)) {
+                dropdown.remove();
+                openFilterKey = null;
+                document.removeEventListener('click', closeFilter);
+            }
+        });
+    }, 0);
+}
+
+function clearAllComparisonFilters() {
+    comparisonFilters = {};
+    const dd = document.getElementById('compFilterDropdown');
+    if (dd) dd.remove();
+    openFilterKey = null;
+    updateComparisonTable();
+}
+
 // Sélectionne un matériau de comparaison pour l'appliquer au calculateur
 function selectComparisonMaterial(id) {
     if (selectedComparisonId === id) {
@@ -1686,6 +1909,7 @@ function selectComparisonMaterial(id) {
             document.getElementById('filamentDensity').value = material.density;
             if (document.getElementById('filamentColor')) document.getElementById('filamentColor').value = material.color || '#ffffff';
             if (document.getElementById('filamentColorName')) document.getElementById('filamentColorName').value = material.colorName || '';
+            if (document.getElementById('filamentBrand')) document.getElementById('filamentBrand').value = material.brand || '';
             calculateCost();
             autoSaveConfig();
             showNotification(`Matériau ${material.type} appliqué au calculateur`, 'success');
@@ -1697,6 +1921,11 @@ function selectComparisonMaterial(id) {
 // Exposer les fonctions nécessaires globalement
 window.calculateCost = calculateCost;
 window.exportResults = exportResults;
+window.sortComparisonTable = sortComparisonTable;
+window.openFilterDropdown = openFilterDropdown;
+window.clearAllComparisonFilters = clearAllComparisonFilters;
+window.editComparisonMaterial = editComparisonMaterial;
+window.cancelEditComparison = cancelEditComparison;
 // ============================================================
 // GESTION DES CLIENTS
 // ============================================================
@@ -1853,6 +2082,180 @@ function getCurrentClient() {
     return loadClients().find(c => c.id === currentClientId) || null;
 }
 
+// ============================================================
+// GESTION DES IMPRIMANTES
+// ============================================================
+const PRINTERS_STORAGE_KEY = '3dprintPrinters';
+let currentPrinterId = null;
+
+const DEFAULT_PRINTERS = [
+    { id: 'printer-bambu-a1', name: 'Bambu Lab A1', brand: 'Bambu Lab', printerCost: 299, powerConsumption: 100, printerLifespan: 5000, maintenanceCost: 0.08, notes: '' },
+    { id: 'printer-bambu-p1s', name: 'Bambu Lab P1S', brand: 'Bambu Lab', printerCost: 699, powerConsumption: 350, printerLifespan: 5000, maintenanceCost: 0.10, notes: '' },
+    { id: 'printer-ender3', name: 'Creality Ender 3 V2', brand: 'Creality', printerCost: 200, powerConsumption: 120, printerLifespan: 4000, maintenanceCost: 0.08, notes: '' },
+    { id: 'printer-prusa-mk4', name: 'Prusa MK4', brand: 'Prusa', printerCost: 799, powerConsumption: 120, printerLifespan: 8000, maintenanceCost: 0.06, notes: '' },
+];
+
+function loadPrinters() {
+    const saved = localStorage.getItem(PRINTERS_STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+    savePrinters(DEFAULT_PRINTERS);
+    return DEFAULT_PRINTERS;
+}
+
+function savePrinters(printers) {
+    localStorage.setItem(PRINTERS_STORAGE_KEY, JSON.stringify(printers));
+}
+
+function renderPrinterSelect() {
+    const select = document.getElementById('printerSelect');
+    if (!select) return;
+    const printers = loadPrinters();
+    select.innerHTML = '<option value="">— Aucune imprimante —</option>';
+    printers.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.brand ? `${p.name} (${p.brand})` : p.name;
+        if (p.id === currentPrinterId) opt.selected = true;
+        select.appendChild(opt);
+    });
+    updatePrinterPreview();
+}
+
+function selectPrinterFromDropdown(id) {
+    currentPrinterId = id || null;
+    updatePrinterPreview();
+    applyPrinterToFields();
+}
+
+function applyPrinterToFields() {
+    if (!currentPrinterId) return;
+    const printer = loadPrinters().find(p => p.id === currentPrinterId);
+    if (!printer) return;
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    set('printerCost', printer.printerCost);
+    set('powerConsumption', printer.powerConsumption);
+    set('printerLifespan', printer.printerLifespan);
+    set('maintenanceCost', printer.maintenanceCost);
+    calculateCost();
+}
+
+function updatePrinterPreview() {
+    const preview = document.getElementById('printerPreview');
+    const editBtn = document.getElementById('editPrinterBtn');
+    const deleteBtn = document.getElementById('deletePrinterBtn');
+
+    if (!currentPrinterId) {
+        preview?.classList.add('hidden');
+        editBtn?.classList.add('hidden');
+        deleteBtn?.classList.add('hidden');
+        return;
+    }
+
+    const printer = loadPrinters().find(p => p.id === currentPrinterId);
+    if (!printer) {
+        currentPrinterId = null;
+        updatePrinterPreview();
+        return;
+    }
+
+    preview?.classList.remove('hidden');
+    editBtn?.classList.remove('hidden');
+    deleteBtn?.classList.remove('hidden');
+
+    document.getElementById('printerPreviewName').textContent = printer.name;
+    document.getElementById('printerPreviewBrand').textContent = printer.brand || '';
+    document.getElementById('printerPreviewSpecs').textContent =
+        `${printer.printerCost} ${window.currencySymbol || '€'} · ${printer.powerConsumption} W · ${printer.printerLifespan} h de vie · ${printer.maintenanceCost} ${window.currencySymbol || '€'}/h maintenance`;
+    if (printer.notes) {
+        document.getElementById('printerPreviewNotes').textContent = printer.notes;
+        document.getElementById('printerPreviewNotes').classList.remove('hidden');
+    } else {
+        document.getElementById('printerPreviewNotes').classList.add('hidden');
+    }
+}
+
+function openPrinterModal(printerId) {
+    const modal = document.getElementById('printerModal');
+    const title = document.getElementById('printerModalTitle');
+    const fields = ['printerModalName','printerModalBrand','printerModalCost','printerModalPower',
+                    'printerModalLifespan','printerModalMaintenance','printerModalNotes'];
+
+    if (printerId) {
+        const printer = loadPrinters().find(p => p.id === printerId);
+        if (!printer) return;
+        title.textContent = "Modifier l'imprimante";
+        document.getElementById('printerModalId').value = printer.id;
+        document.getElementById('printerModalName').value = printer.name || '';
+        document.getElementById('printerModalBrand').value = printer.brand || '';
+        document.getElementById('printerModalCost').value = printer.printerCost || '';
+        document.getElementById('printerModalPower').value = printer.powerConsumption || '';
+        document.getElementById('printerModalLifespan').value = printer.printerLifespan || '';
+        document.getElementById('printerModalMaintenance').value = printer.maintenanceCost || '';
+        document.getElementById('printerModalNotes').value = printer.notes || '';
+    } else {
+        title.textContent = 'Nouvelle imprimante';
+        document.getElementById('printerModalId').value = '';
+        fields.forEach(id => { document.getElementById(id).value = ''; });
+    }
+
+    modal?.classList.remove('hidden');
+    document.getElementById('printerModalName').focus();
+}
+
+function closePrinterModal() {
+    document.getElementById('printerModal')?.classList.add('hidden');
+}
+
+function savePrinterModal() {
+    const name = document.getElementById('printerModalName').value.trim();
+    if (!name) {
+        showNotification("Le nom de l'imprimante est obligatoire.", 'error');
+        return;
+    }
+
+    const existingId = document.getElementById('printerModalId').value;
+    const printers = loadPrinters();
+
+    const printerData = {
+        id: existingId || 'printer-' + Date.now(),
+        name,
+        brand:            document.getElementById('printerModalBrand').value.trim(),
+        printerCost:      parseFloat(document.getElementById('printerModalCost').value) || 0,
+        powerConsumption: parseFloat(document.getElementById('printerModalPower').value) || 0,
+        printerLifespan:  parseFloat(document.getElementById('printerModalLifespan').value) || 1,
+        maintenanceCost:  parseFloat(document.getElementById('printerModalMaintenance').value) || 0,
+        notes:            document.getElementById('printerModalNotes').value.trim(),
+    };
+
+    if (existingId) {
+        const idx = printers.findIndex(p => p.id === existingId);
+        if (idx >= 0) printers[idx] = printerData;
+    } else {
+        printers.push(printerData);
+    }
+
+    savePrinters(printers);
+    currentPrinterId = printerData.id;
+    renderPrinterSelect();
+    applyPrinterToFields();
+    closePrinterModal();
+    showNotification('Imprimante enregistrée.', 'success');
+}
+
+function editSelectedPrinter() {
+    if (currentPrinterId) openPrinterModal(currentPrinterId);
+}
+
+function deleteSelectedPrinter() {
+    if (!currentPrinterId) return;
+    if (!confirm('Supprimer cette imprimante ?')) return;
+    const printers = loadPrinters().filter(p => p.id !== currentPrinterId);
+    savePrinters(printers);
+    currentPrinterId = null;
+    renderPrinterSelect();
+    showNotification('Imprimante supprimée.', 'info');
+}
+
 window.saveConfig = saveConfig;
 window.loadConfig = loadConfig;
 window.resetToDefaults = resetToDefaults;
@@ -1874,3 +2277,65 @@ window.saveClientModal = saveClientModal;
 window.selectClientFromDropdown = selectClientFromDropdown;
 window.editSelectedClient = editSelectedClient;
 window.deleteSelectedClient = deleteSelectedClient;
+window.openPrinterModal = openPrinterModal;
+window.closePrinterModal = closePrinterModal;
+window.savePrinterModal = savePrinterModal;
+window.selectPrinterFromDropdown = selectPrinterFromDropdown;
+window.editSelectedPrinter = editSelectedPrinter;
+window.deleteSelectedPrinter = deleteSelectedPrinter;
+
+// ============================================================
+// EXPORT / IMPORT DES DONNÉES
+// ============================================================
+function exportAllData() {
+    const keys = [
+        '3dprintCalculatorConfig',
+        '3dprintComparisonMaterials',
+        '3dprintCalculatorHistory',
+        '3dprintClients',
+        '3dprintPrinters',
+        '3dprintCurrency',
+        'ced-locale',
+        'theme',
+    ];
+    const backup = { version: '3.5', exportDate: new Date().toISOString(), data: {} };
+    keys.forEach(k => {
+        const val = localStorage.getItem(k);
+        if (val !== null) {
+            try { backup.data[k] = JSON.parse(val); } catch (_) { backup.data[k] = val; }
+        }
+    });
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `calculateur-3d-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showNotification('Données exportées avec succès', 'success');
+}
+
+function importAllData(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const backup = JSON.parse(e.target.result);
+            if (!backup.data || typeof backup.data !== 'object') throw new Error('Format invalide');
+            Object.entries(backup.data).forEach(([k, v]) => {
+                localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+            });
+            showNotification('Données importées. Rechargement en cours…', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } catch (_) {
+            showNotification("Erreur lors de l'import : fichier invalide", 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+window.exportAllData = exportAllData;
+window.setCurrency = setCurrency;
+window.triggerImport = function() { document.getElementById('importDataInput').click(); };

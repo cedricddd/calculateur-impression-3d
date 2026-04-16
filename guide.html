@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ced-IT Calculateur 3D — Guide d'utilisation</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    :root {
+      --navy:    #0a1628;
+      --navy2:   #0d2040;
+      --navy3:   #112255;
+      --cyan:    #00d4ff;
+      --cyan2:   #00b8e0;
+      --violet:  #8b5cf6;
+      --violet2: #7c3aed;
+      --yellow:  #facc15;
+      --text:    #e2e8f0;
+      --muted:   #94a3b8;
+      --border:  rgba(0,212,255,0.15);
+      --card:    rgba(13,32,64,0.8);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(139,92,246,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(0,212,255,0.08) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* ═══ LANG TOGGLE ═══ */
+    .lang-bar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 32px;
+    }
+
+    .lang-toggle {
+      display: flex;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .lang-btn {
+      cursor: pointer;
+      padding: 7px 20px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.25s ease;
+    }
+
+    .lang-btn.active { background: var(--violet); color: #fff; }
+
+    /* ═══ HEADER ═══ */
+    .header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .app-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.25);
+      border-radius: 50px;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--cyan);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #ffffff 0%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header .tagline {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 580px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ═══ SECTION TITLES ═══ */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .section-h2 { font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+    .section-sub { font-size: 15px; color: var(--muted); margin-bottom: 32px; line-height: 1.6; }
+
+    /* ═══ STEP CARDS ═══ */
+    .steps-section { margin-bottom: 64px; }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .step-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .step-card:hover { transform: translateY(-3px); border-color: rgba(139,92,246,0.4); }
+
+    .step-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--violet), var(--cyan));
+    }
+
+    .step-card.warn::before { background: linear-gradient(90deg, #f59e0b, #facc15); }
+    .step-card.success::before { background: linear-gradient(90deg, #10b981, #34d399); }
+
+    .step-num {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--violet);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .step-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: rgba(139,92,246,0.15);
+      border: 1px solid rgba(139,92,246,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 22px;
+    }
+
+    .step-icon.cyan-icon {
+      background: rgba(0,212,255,0.1);
+      border-color: rgba(0,212,255,0.2);
+    }
+
+    .step-icon.yellow-icon {
+      background: rgba(250,204,21,0.1);
+      border-color: rgba(250,204,21,0.2);
+    }
+
+    .step-icon.green-icon {
+      background: rgba(16,185,129,0.1);
+      border-color: rgba(16,185,129,0.2);
+    }
+
+    .step-card h3 { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .step-card p { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    .step-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; }
+
+    .step-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.2);
+      color: var(--cyan);
+    }
+
+    .step-tag.warn {
+      background: rgba(245,158,11,0.1);
+      border-color: rgba(245,158,11,0.25);
+      color: #fbbf24;
+    }
+
+    .step-tag.green {
+      background: rgba(16,185,129,0.1);
+      border-color: rgba(16,185,129,0.25);
+      color: #34d399;
+    }
+
+    /* ═══ ALERT BANNER ═══ */
+    .alert-banner {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.3);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .alert-banner .alert-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+
+    .alert-banner h4 { font-size: 14px; font-weight: 700; color: #fbbf24; margin-bottom: 4px; }
+    .alert-banner p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    .alert-banner.info {
+      background: rgba(0,212,255,0.06);
+      border-color: rgba(0,212,255,0.2);
+    }
+
+    .alert-banner.info h4 { color: var(--cyan); }
+
+    /* ═══ INFO CARDS ═══ */
+    .info-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 16px;
+    }
+
+    .info-card h3 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .info-card p { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+    /* ═══ FEATURE LIST ═══ */
+    .feature-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .feature-list li .fi {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(0,212,255,0.12);
+      border: 1px solid rgba(0,212,255,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--cyan);
+    }
+
+    /* ═══ HIGHLIGHT BOX ═══ */
+    .highlight-box {
+      background: rgba(139,92,246,0.08);
+      border: 1px solid rgba(139,92,246,0.25);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+
+    .highlight-box h4 { font-size: 15px; font-weight: 700; color: #c4b5fd; margin-bottom: 8px; }
+    .highlight-box p { font-size: 13px; color: var(--muted); line-height: 1.65; }
+    .highlight-box code {
+      display: inline-block;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 5px;
+      padding: 2px 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--cyan);
+      margin-top: 4px;
+    }
+
+    /* ═══ TOP BAR ═══ */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      border: 1px solid rgba(0,212,255,0.3);
+      background: rgba(255,255,255,0.04);
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-back:hover {
+      border-color: rgba(0,212,255,0.5);
+      background: rgba(0,212,255,0.06);
+      color: var(--cyan);
+    }
+
+    /* ═══ FOOTER ═══ */
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(148,163,184,0.5);
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer span { color: var(--cyan); opacity: 0.7; }
+
+    /* ═══ LANG HIDDEN ═══ */
+    [data-lang] { display: none; }
+    body.fr [data-lang="fr"] { display: block; }
+    body.en [data-lang="en"] { display: block; }
+
+    .section-h2[data-lang], .section-sub[data-lang],
+    .header .tagline[data-lang],
+    .step-num[data-lang], .step-card h3[data-lang], .step-card p[data-lang],
+    .step-tag[data-lang], .info-card h3[data-lang], .info-card p[data-lang],
+    .alert-banner h4[data-lang], .alert-banner p[data-lang],
+    .highlight-box h4[data-lang], .highlight-box p[data-lang],
+    .feature-list li[data-lang] {
+      display: none;
+    }
+
+    body.fr .section-h2[data-lang="fr"],
+    body.fr .section-sub[data-lang="fr"],
+    body.fr .header .tagline[data-lang="fr"],
+    body.fr .step-num[data-lang="fr"],
+    body.fr .step-card h3[data-lang="fr"],
+    body.fr .step-card p[data-lang="fr"],
+    body.fr .step-tag[data-lang="fr"],
+    body.fr .info-card h3[data-lang="fr"],
+    body.fr .info-card p[data-lang="fr"],
+    body.fr .alert-banner h4[data-lang="fr"],
+    body.fr .alert-banner p[data-lang="fr"],
+    body.fr .highlight-box h4[data-lang="fr"],
+    body.fr .highlight-box p[data-lang="fr"],
+    body.fr .feature-list li[data-lang="fr"] { display: flex; }
+
+    body.en .section-h2[data-lang="en"],
+    body.en .section-sub[data-lang="en"],
+    body.en .header .tagline[data-lang="en"],
+    body.en .step-num[data-lang="en"],
+    body.en .step-card h3[data-lang="en"],
+    body.en .step-card p[data-lang="en"],
+    body.en .step-tag[data-lang="en"],
+    body.en .info-card h3[data-lang="en"],
+    body.en .info-card p[data-lang="en"],
+    body.en .alert-banner h4[data-lang="en"],
+    body.en .alert-banner p[data-lang="en"],
+    body.en .highlight-box h4[data-lang="en"],
+    body.en .highlight-box p[data-lang="en"],
+    body.en .feature-list li[data-lang="en"] { display: flex; }
+
+    body.fr .section-h2[data-lang="fr"],
+    body.fr .section-sub[data-lang="fr"],
+    body.fr .header .tagline[data-lang="fr"],
+    body.fr .step-card h3[data-lang="fr"],
+    body.fr .step-card p[data-lang="fr"],
+    body.fr .info-card h3[data-lang="fr"],
+    body.fr .info-card p[data-lang="fr"],
+    body.fr .alert-banner h4[data-lang="fr"],
+    body.fr .alert-banner p[data-lang="fr"],
+    body.fr .highlight-box h4[data-lang="fr"],
+    body.fr .highlight-box p[data-lang="fr"] { display: block; }
+
+    body.en .section-h2[data-lang="en"],
+    body.en .section-sub[data-lang="en"],
+    body.en .header .tagline[data-lang="en"],
+    body.en .step-card h3[data-lang="en"],
+    body.en .step-card p[data-lang="en"],
+    body.en .info-card h3[data-lang="en"],
+    body.en .info-card p[data-lang="en"],
+    body.en .alert-banner h4[data-lang="en"],
+    body.en .alert-banner p[data-lang="en"],
+    body.en .highlight-box h4[data-lang="en"],
+    body.en .highlight-box p[data-lang="en"] { display: block; }
+
+    @media (max-width: 600px) {
+      .steps-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="fr">
+<div class="page">
+
+  <!-- ═══ TOP BAR ═══ -->
+  <div class="top-bar">
+    <!-- Retour calculateur -->
+    <a href="/" class="btn-back">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <path d="M8.5 2.5L4 7l4.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span data-lang="fr">Retour calculateur</span>
+      <span data-lang="en">Back to calculator</span>
+    </a>
+
+    <!-- Lang toggle -->
+    <div class="lang-toggle">
+      <button type="button" class="lang-btn active" onclick="setLang('fr')">🇫🇷 Français</button>
+      <button type="button" class="lang-btn" onclick="setLang('en')">🇬🇧 English</button>
+    </div>
+  </div>
+
+  <!-- ═══ HEADER ═══ -->
+  <div class="header">
+    <div class="app-badge">🖨️ Ced-IT Calculateur d'Impression 3D</div>
+    <h1>Guide d'utilisation</h1>
+    <p class="tagline" data-lang="fr">Calculez le coût réel de vos impressions 3D, gérez vos imprimantes, vos clients et exportez des devis PDF professionnels.</p>
+    <p class="tagline" data-lang="en">Calculate the real cost of your 3D prints, manage your printers, clients, and export professional PDF quotes.</p>
+  </div>
+
+  <!-- ═══ 1. DÉMARRAGE RAPIDE ═══ -->
+  <div class="steps-section">
+    <div class="section-title">
+      <span data-lang="fr">Démarrage rapide</span>
+      <span data-lang="en">Quick start</span>
+    </div>
+    <section-h2 data-lang="fr" class="section-h2">Comment ça fonctionne ?</section-h2>
+    <section-h2 data-lang="en" class="section-h2">How does it work?</section-h2>
+    <p class="section-sub" data-lang="fr">En trois grandes étapes : importer votre fichier, renseigner les paramètres, et générer le PDF.</p>
+    <p class="section-sub" data-lang="en">Three main steps: import your file, fill in the parameters, and generate the PDF.</p>
+
+    <div class="steps-grid">
+
+      <!-- Étape 1 -->
+      <div class="step-card">
+        <div class="step-num" data-lang="fr">Étape 1</div>
+        <div class="step-num" data-lang="en">Step 1</div>
+        <div class="step-icon">📁</div>
+        <h3 data-lang="fr">Importer votre fichier</h3>
+        <h3 data-lang="en">Import your file</h3>
+        <p data-lang="fr">Glissez-déposez un fichier <strong>STL</strong> ou <strong>3MF</strong> dans la zone d'importation, ou cliquez pour parcourir.</p>
+        <p data-lang="en">Drag and drop a <strong>STL</strong> or <strong>3MF</strong> file into the import area, or click to browse.</p>
+        <div class="step-tags">
+          <span class="step-tag">STL</span>
+          <span class="step-tag">3MF</span>
+        </div>
+      </div>
+
+      <!-- Étape 2 -->
+      <div class="step-card">
+        <div class="step-num" data-lang="fr">Étape 2</div>
+        <div class="step-num" data-lang="en">Step 2</div>
+        <div class="step-icon cyan-icon">⚙️</div>
+        <h3 data-lang="fr">Configurer les paramètres</h3>
+        <h3 data-lang="en">Configure parameters</h3>
+        <p data-lang="fr">Sélectionnez l'imprimante, le matériau, renseignez le temps d'impression et les données de la pièce.</p>
+        <p data-lang="en">Select the printer, material, fill in print time and part data.</p>
+        <div class="step-tags">
+          <span class="step-tag" data-lang="fr">Matériau</span>
+          <span class="step-tag" data-lang="en">Material</span>
+          <span class="step-tag" data-lang="fr">Imprimante</span>
+          <span class="step-tag" data-lang="en">Printer</span>
+        </div>
+      </div>
+
+      <!-- Étape 3 -->
+      <div class="step-card success">
+        <div class="step-num" data-lang="fr">Étape 3</div>
+        <div class="step-num" data-lang="en">Step 3</div>
+        <div class="step-icon green-icon">📄</div>
+        <h3 data-lang="fr">Exporter le devis PDF</h3>
+        <h3 data-lang="en">Export PDF quote</h3>
+        <p data-lang="fr">Cliquez sur <strong>Générer PDF</strong> pour produire un devis professionnel avec vos informations de société.</p>
+        <p data-lang="en">Click <strong>Generate PDF</strong> to produce a professional quote with your company information.</p>
+        <div class="step-tags">
+          <span class="step-tag green" data-lang="fr">Devis professionnel</span>
+          <span class="step-tag green" data-lang="en">Professional quote</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ 2. FICHIERS STL ═══ -->
+  <div class="steps-section">
+    <div class="section-title">
+      <span data-lang="fr">Fichiers STL</span>
+      <span data-lang="en">STL files</span>
+    </div>
+    <p class="section-h2" data-lang="fr">⚠️ Saisie manuelle requise pour les STL</p>
+    <p class="section-h2" data-lang="en">⚠️ Manual entry required for STL files</p>
+    <p class="section-sub" data-lang="fr">Les fichiers STL contiennent uniquement la géométrie — aucune donnée de tranchage. Vous devez saisir manuellement les informations d'impression.</p>
+    <p class="section-sub" data-lang="en">STL files contain only geometry — no slicing data. You must manually enter the print information.</p>
+
+    <div class="alert-banner">
+      <div class="alert-icon">⚠️</div>
+      <div>
+        <h4 data-lang="fr">Pas de calcul automatique avec les STL</h4>
+        <h4 data-lang="en">No automatic calculation with STL files</h4>
+        <p data-lang="fr">Contrairement aux fichiers 3MF tranchés, un fichier STL ne contient pas le temps d'impression, le poids ou le remplissage. Ces données dépendent de votre trancheur (PrusaSlicer, Bambu Studio, Cura…) et doivent être renseignées à la main après tranchage.</p>
+        <p data-lang="en">Unlike sliced 3MF files, an STL file does not contain print time, weight, or infill. These values depend on your slicer (PrusaSlicer, Bambu Studio, Cura…) and must be entered manually after slicing.</p>
+      </div>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card warn">
+        <div class="step-icon yellow-icon">🔢</div>
+        <h3 data-lang="fr">Données à saisir manuellement</h3>
+        <h3 data-lang="en">Data to enter manually</h3>
+        <ul class="feature-list">
+          <li data-lang="fr"><span class="fi">→</span> Temps d'impression (en heures/minutes)</li>
+          <li data-lang="fr"><span class="fi">→</span> Poids de matière utilisée (en grammes)</li>
+          <li data-lang="fr"><span class="fi">→</span> Taux de remplissage (en %)</li>
+          <li data-lang="en"><span class="fi">→</span> Print time (hours/minutes)</li>
+          <li data-lang="en"><span class="fi">→</span> Material weight used (in grams)</li>
+          <li data-lang="en"><span class="fi">→</span> Infill percentage (%)</li>
+        </ul>
+        <div class="step-tags">
+          <span class="step-tag warn" data-lang="fr">Saisie manuelle</span>
+          <span class="step-tag warn" data-lang="en">Manual entry</span>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-icon cyan-icon">💡</div>
+        <h3 data-lang="fr">Conseil pratique</h3>
+        <h3 data-lang="en">Practical tip</h3>
+        <p data-lang="fr">Tranchez votre STL dans votre logiciel habituel (Cura, PrusaSlicer…), relevez le temps estimé, le poids et le remplissage affichés, puis renseignez ces valeurs dans le calculateur.</p>
+        <p data-lang="en">Slice your STL in your usual software (Cura, PrusaSlicer…), note the estimated time, weight and infill displayed, then enter these values in the calculator.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 3. FICHIERS 3MF ═══ -->
+  <div class="steps-section">
+    <div class="section-title">
+      <span data-lang="fr">Fichiers 3MF tranchés</span>
+      <span data-lang="en">Sliced 3MF files</span>
+    </div>
+    <p class="section-h2" data-lang="fr">✅ Import automatique des données de tranchage</p>
+    <p class="section-h2" data-lang="en">✅ Automatic import of slicing data</p>
+    <p class="section-sub" data-lang="fr">Un fichier 3MF <strong>tranché</strong> contient toutes les informations réelles de votre machine. Importez-le pour un calcul précis et automatique.</p>
+    <p class="section-sub" data-lang="en">A <strong>sliced</strong> 3MF file contains all the real data from your machine. Import it for accurate, automatic calculation.</p>
+
+    <div class="alert-banner info">
+      <div class="alert-icon">💡</div>
+      <div>
+        <h4 data-lang="fr">Important : utiliser le fichier tranché du plateau</h4>
+        <h4 data-lang="en">Important: use the sliced plate file</h4>
+        <p data-lang="fr">Dans <strong>Bambu Studio</strong>, ce fichier s'appelle <em>"Exporter fichier tranché du plateau"</em>. Il contient le temps réel, la consommation matière et les paramètres machine. Chaque imprimante et chaque configuration de plateau donnera des données différentes.</p>
+        <p data-lang="en">In <strong>Bambu Studio</strong>, this file is called <em>"Export sliced file of the plate"</em>. It contains the real print time, material usage and machine parameters. Each printer and plate configuration will produce different data.</p>
+      </div>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card success">
+        <div class="step-icon green-icon">🤖</div>
+        <h3 data-lang="fr">Données extraites automatiquement</h3>
+        <h3 data-lang="en">Automatically extracted data</h3>
+        <ul class="feature-list">
+          <li data-lang="fr"><span class="fi">✓</span> Temps d'impression réel</li>
+          <li data-lang="fr"><span class="fi">✓</span> Poids matière (par filament)</li>
+          <li data-lang="fr"><span class="fi">✓</span> Taux de remplissage</li>
+          <li data-lang="fr"><span class="fi">✓</span> Nom du profil machine</li>
+          <li data-lang="en"><span class="fi">✓</span> Real print time</li>
+          <li data-lang="en"><span class="fi">✓</span> Material weight (per filament)</li>
+          <li data-lang="en"><span class="fi">✓</span> Infill percentage</li>
+          <li data-lang="en"><span class="fi">✓</span> Machine profile name</li>
+        </ul>
+        <div class="step-tags">
+          <span class="step-tag green" data-lang="fr">Bambu Studio</span>
+          <span class="step-tag green" data-lang="en">Bambu Studio</span>
+          <span class="step-tag green">3MF</span>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-icon cyan-icon">📋</div>
+        <h3 data-lang="fr">Comment exporter depuis Bambu Studio</h3>
+        <h3 data-lang="en">How to export from Bambu Studio</h3>
+        <ul class="feature-list">
+          <li data-lang="fr"><span class="fi">1</span> Tranchez votre plateau normalement</li>
+          <li data-lang="fr"><span class="fi">2</span> Menu <strong>Fichier</strong> → <strong>Exporter</strong></li>
+          <li data-lang="fr"><span class="fi">3</span> Choisir <strong>"Exporter fichier tranché du plateau"</strong></li>
+          <li data-lang="fr"><span class="fi">4</span> Importez le .3mf dans le calculateur</li>
+          <li data-lang="en"><span class="fi">1</span> Slice your plate normally</li>
+          <li data-lang="en"><span class="fi">2</span> Menu <strong>File</strong> → <strong>Export</strong></li>
+          <li data-lang="en"><span class="fi">3</span> Choose <strong>"Export sliced file of the plate"</strong></li>
+          <li data-lang="en"><span class="fi">4</span> Import the .3mf into the calculator</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 4. GESTION DES IMPRIMANTES ═══ -->
+  <div class="steps-section">
+    <div class="section-title">
+      <span data-lang="fr">Gestion des imprimantes</span>
+      <span data-lang="en">Printer management</span>
+    </div>
+    <p class="section-h2" data-lang="fr">Ajouter et configurer vos imprimantes</p>
+    <p class="section-h2" data-lang="en">Add and configure your printers</p>
+    <p class="section-sub" data-lang="fr">Chaque imprimante a ses propres paramètres de coût horaire. Ceux-ci sont utilisés pour calculer le coût machine de chaque impression.</p>
+    <p class="section-sub" data-lang="en">Each printer has its own hourly cost settings, used to calculate the machine cost of each print.</p>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon">🖨️</div>
+        <h3 data-lang="fr">Ajouter une imprimante</h3>
+        <h3 data-lang="en">Add a printer</h3>
+        <ul class="feature-list">
+          <li data-lang="fr"><span class="fi">1</span> Onglet <strong>Paramètres</strong> → section <strong>Imprimantes</strong></li>
+          <li data-lang="fr"><span class="fi">2</span> Cliquez sur <strong>Ajouter une imprimante</strong></li>
+          <li data-lang="fr"><span class="fi">3</span> Renseignez le nom, le coût horaire et la consommation électrique</li>
+          <li data-lang="fr"><span class="fi">4</span> Sauvegardez — elle apparaît dans le sélecteur</li>
+          <li data-lang="en"><span class="fi">1</span> Tab <strong>Settings</strong> → <strong>Printers</strong> section</li>
+          <li data-lang="en"><span class="fi">2</span> Click <strong>Add a printer</strong></li>
+          <li data-lang="en"><span class="fi">3</span> Enter name, hourly cost and power consumption</li>
+          <li data-lang="en"><span class="fi">4</span> Save — it appears in the selector</li>
+        </ul>
+        <div class="step-tags">
+          <span class="step-tag" data-lang="fr">Coût horaire</span>
+          <span class="step-tag" data-lang="en">Hourly rate</span>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-icon cyan-icon">💡</div>
+        <h3 data-lang="fr">Différence par machine</h3>
+        <h3 data-lang="en">Per-machine difference</h3>
+        <p data-lang="fr">Le temps d'impression, le coût et le remplissage varient d'une machine à l'autre. Pour un résultat précis, associez toujours l'imprimante correcte à chaque calcul ou utilisez un fichier 3MF tranché par cette machine.</p>
+        <p data-lang="en">Print time, cost and infill vary between machines. For accurate results, always associate the correct printer with each calculation, or use a 3MF file sliced by that machine.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 5. GESTION DES CLIENTS ═══ -->
+  <div class="steps-section">
+    <div class="section-title">
+      <span data-lang="fr">Gestion des clients</span>
+      <span data-lang="en">Client management</span>
+    </div>
+    <p class="section-h2" data-lang="fr">Ajouter vos clients pour les devis</p>
+    <p class="section-h2" data-lang="en">Add your clients for quotes</p>
+    <p class="section-sub" data-lang="fr">Créez une base de clients pour que leurs coordonnées apparaissent automatiquement dans les PDF générés.</p>
+    <p class="section-sub" data-lang="en">Build a client database so their contact details appear automatically in generated PDFs.</p>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon">👥</div>
+        <h3 data-lang="fr">Créer un client</h3>
+        <h3 data-lang="en">Create a client</h3>
+        <ul class="feature-list">
+          <li data-lang="fr"><span class="fi">1</span> Onglet <strong>Clients</strong></li>
+          <li data-lang="fr"><span class="fi">2</span> Cliquez sur <strong>Nouveau client</strong></li>
+          <li data-lang="fr"><span class="fi">3</span> Renseignez nom, adresse, email, TVA…</li>
+          <li data-lang="fr"><span class="fi">4</span> Sauvegardez et sélectionnez-le dans le calculateur</li>
+          <li data-lang="en"><span class="fi">1</span> Tab <strong>Clients</strong></li>
+          <li data-lang="en"><span class="fi">2</span> Click <strong>New client</strong></li>
+          <li data-lang="en"><span class="fi">3</span> Fill in name, address, email, VAT…</li>
+          <li data-lang="en"><span class="fi">4</span> Save and select in the calculator</li>
+        </ul>
+      </div>
+
+      <div class="step-card">
+        <div class="step-icon cyan-icon">📄</div>
+        <h3 data-lang="fr">Dans le PDF</h3>
+        <h3 data-lang="en">In the PDF</h3>
+        <p data-lang="fr">Les coordonnées du client sélectionné s'ajoutent automatiquement dans l'en-tête du devis PDF. Plus besoin de les ressaisir à chaque fois.</p>
+        <p data-lang="en">The selected client's contact details are automatically added to the PDF quote header. No need to re-enter them each time.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 6. EXPORT PDF ═══ -->
+  <div class="steps-section">
+    <div class="section-title">
+      <span data-lang="fr">Export PDF</span>
+      <span data-lang="en">PDF Export</span>
+    </div>
+    <p class="section-h2" data-lang="fr">Générer un devis PDF professionnel</p>
+    <p class="section-h2" data-lang="en">Generate a professional PDF quote</p>
+    <p class="section-sub" data-lang="fr">Le PDF inclut le détail des coûts, les informations client et les données de votre société.</p>
+    <p class="section-sub" data-lang="en">The PDF includes cost breakdown, client info and your company data.</p>
+
+    <div class="steps-grid">
+      <div class="step-card success">
+        <div class="step-icon green-icon">📥</div>
+        <h3 data-lang="fr">Contenu du PDF</h3>
+        <h3 data-lang="en">PDF contents</h3>
+        <ul class="feature-list">
+          <li data-lang="fr"><span class="fi">✓</span> Logo et informations de votre société</li>
+          <li data-lang="fr"><span class="fi">✓</span> Coordonnées du client</li>
+          <li data-lang="fr"><span class="fi">✓</span> Détail des coûts (matière, machine, main d'œuvre…)</li>
+          <li data-lang="fr"><span class="fi">✓</span> Prix total HT / TVA / TTC</li>
+          <li data-lang="fr"><span class="fi">✓</span> Paramètres d'impression (temps, poids, remplissage)</li>
+          <li data-lang="en"><span class="fi">✓</span> Your company logo and info</li>
+          <li data-lang="en"><span class="fi">✓</span> Client contact details</li>
+          <li data-lang="en"><span class="fi">✓</span> Cost breakdown (material, machine, labour…)</li>
+          <li data-lang="en"><span class="fi">✓</span> Total price excl./incl. VAT</li>
+          <li data-lang="en"><span class="fi">✓</span> Print parameters (time, weight, infill)</li>
+        </ul>
+        <div class="step-tags">
+          <span class="step-tag green">PDF</span>
+        </div>
+      </div>
+
+      <div class="step-card warn">
+        <div class="step-icon yellow-icon">🏢</div>
+        <h3 data-lang="fr">Données société dans le PDF</h3>
+        <h3 data-lang="en">Company data in the PDF</h3>
+        <p data-lang="fr">Les informations de votre société (nom, adresse, TVA, IBAN, logo…) qui apparaissent dans le PDF proviennent de votre <strong>profil Ced-IT SaaS</strong>.</p>
+        <p data-lang="en">Your company information (name, address, VAT, IBAN, logo…) shown in the PDF comes from your <strong>Ced-IT SaaS profile</strong>.</p>
+        <div class="step-tags">
+          <span class="step-tag warn" data-lang="fr">Voir section suivante</span>
+          <span class="step-tag warn" data-lang="en">See next section</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 7. DONNÉES SOCIÉTÉ ═══ -->
+  <div class="steps-section">
+    <div class="section-title">
+      <span data-lang="fr">Informations de société</span>
+      <span data-lang="en">Company information</span>
+    </div>
+    <p class="section-h2" data-lang="fr">🏢 Configurer vos données société dans le SaaS</p>
+    <p class="section-h2" data-lang="en">🏢 Set up your company data in the SaaS</p>
+    <p class="section-sub" data-lang="fr">Les données qui s'affichent dans les PDF (nom, adresse, TVA, logo…) sont à renseigner dans votre profil SaaS, pas dans l'application.</p>
+    <p class="section-sub" data-lang="en">The data shown in PDFs (name, address, VAT, logo…) is configured in your SaaS profile, not in the app.</p>
+
+    <div class="highlight-box">
+      <h4 data-lang="fr">📍 Où configurer ?</h4>
+      <h4 data-lang="en">📍 Where to configure?</h4>
+      <p data-lang="fr">Rendez-vous sur <strong>saas.ced-it.be</strong> → <strong>Profil &amp; sécurité</strong> → <strong>Informations de société</strong>. Renseignez : nom de société, adresse, code postal, ville, pays, téléphone, email professionnel, numéro TVA, IBAN, banque, site web, nom et titre du signataire.</p>
+      <p data-lang="en">Go to <strong>saas.ced-it.be</strong> → <strong>Profile &amp; security</strong> → <strong>Company information</strong>. Fill in: company name, address, postal code, city, country, phone, professional email, VAT number, IBAN, bank, website, signatory name and title.</p>
+      <br>
+      <p data-lang="fr">Pour le <strong>logo</strong>, uploadez-le dans la section <strong>Avatar / Logo</strong> du même profil.</p>
+      <p data-lang="en">For the <strong>logo</strong>, upload it in the <strong>Avatar / Logo</strong> section of the same profile.</p>
+    </div>
+
+    <div class="alert-banner">
+      <div class="alert-icon">⚠️</div>
+      <div>
+        <h4 data-lang="fr">Ces données sont partagées entre toutes vos apps Ced-IT</h4>
+        <h4 data-lang="en">This data is shared across all your Ced-IT apps</h4>
+        <p data-lang="fr">Le calculateur 3D, l'application de devis et toutes les autres apps Ced-IT utilisent les mêmes informations de société. Mettez-les à jour une seule fois dans le profil SaaS.</p>
+        <p data-lang="en">The 3D calculator, the quote app and all other Ced-IT apps use the same company information. Update it once in the SaaS profile.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 8. PARAMÈTRES — EXPORT / IMPORT BDD ═══ -->
+  <div class="steps-section">
+    <div class="section-title">
+      <span data-lang="fr">Paramètres — Base de données</span>
+      <span data-lang="en">Settings — Database</span>
+    </div>
+    <p class="section-h2" data-lang="fr">Exporter et importer vos données</p>
+    <p class="section-h2" data-lang="en">Export and import your data</p>
+    <p class="section-sub" data-lang="fr">L'onglet Paramètres permet de sauvegarder ou de restaurer l'ensemble de vos données : imprimantes, clients, matériaux et tarifs.</p>
+    <p class="section-sub" data-lang="en">The Settings tab lets you back up or restore all your data: printers, clients, materials and rates.</p>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-icon">💾</div>
+        <h3 data-lang="fr">Exporter la base de données</h3>
+        <h3 data-lang="en">Export the database</h3>
+        <p data-lang="fr">Dans <strong>Paramètres</strong>, cliquez sur <strong>Exporter les données</strong>. Un fichier JSON est téléchargé contenant toutes vos imprimantes, clients et configurations.</p>
+        <p data-lang="en">In <strong>Settings</strong>, click <strong>Export data</strong>. A JSON file is downloaded containing all your printers, clients and configurations.</p>
+        <div class="step-tags">
+          <span class="step-tag">JSON</span>
+          <span class="step-tag" data-lang="fr">Sauvegarde</span>
+          <span class="step-tag" data-lang="en">Backup</span>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-icon cyan-icon">📤</div>
+        <h3 data-lang="fr">Importer la base de données</h3>
+        <h3 data-lang="en">Import the database</h3>
+        <p data-lang="fr">Cliquez sur <strong>Importer les données</strong> et sélectionnez un fichier JSON précédemment exporté. Utile pour migrer vers un autre appareil ou restaurer après une réinitialisation.</p>
+        <p data-lang="en">Click <strong>Import data</strong> and select a previously exported JSON file. Useful for migrating to another device or restoring after a reset.</p>
+        <div class="step-tags">
+          <span class="step-tag" data-lang="fr">Migration</span>
+          <span class="step-tag" data-lang="en">Migration</span>
+          <span class="step-tag" data-lang="fr">Restauration</span>
+          <span class="step-tag" data-lang="en">Restore</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FOOTER ═══ -->
+  <div class="footer">
+    <p>Ced-IT Calculateur d'Impression 3D &nbsp;·&nbsp; <span>saas.ced-it.be</span></p>
+  </div>
+
+</div>
+
+<script>
+  function setLang(lang) {
+    document.body.className = lang;
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent.toLowerCase().includes(lang === 'fr' ? 'français' : 'english'));
+    });
+    localStorage.setItem('guide-lang', lang);
+  }
+
+  (function() {
+    const saved = localStorage.getItem('guide-lang') || 'fr';
+    setLang(saved);
+  })();
+</script>
+</body>
+</html>

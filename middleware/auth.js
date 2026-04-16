@@ -5,6 +5,12 @@ const APP_SLUG = 'calculateur-3d';
 module.exports = function authMiddleware(req, res, next) {
   if (req.path === '/callback' || req.path === '/health') return next();
 
+  // Dev local : désactiver l'auth (DISABLE_AUTH=true dans .env.local)
+  if (process.env.DISABLE_AUTH === 'true') {
+    req.user = { appSlug: APP_SLUG, email: 'dev@local', hasAccess: true }
+    return next()
+  }
+
   const secret  = process.env.APP_TOKEN_SECRET;
   const saasUrl = process.env.SAAS_URL || 'https://saas.ced-it.be';
   const appUrl  = process.env.APP_URL  || 'https://calculateur-impression-3d.ced-it.be';

@@ -163,3 +163,34 @@ input:focus, select:focus, textarea:focus {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Bouton filtre colonne tableau comparaison */
+.filter-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 10px;
+    color: rgba(160, 160, 180, 0.5);
+    padding: 0 2px;
+    vertical-align: middle;
+    transition: color 0.2s;
+}
+.filter-btn:hover {
+    color: var(--accent-cyan);
+}
+
+/* Boutons comparaison matériaux */
+#btnCancelEdit {
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    background: transparent;
+}
+
+#btnAddMaterial {
+    background: var(--accent-gradient) !important;
+}
+#btnUpdateMaterial {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+}
+
