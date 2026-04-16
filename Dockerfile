@@ -16,6 +16,7 @@ COPY auth/ ./auth/
 COPY middleware/ ./middleware/
 
 # Fichiers statiques dans public/
+COPY guide.html ./
 COPY index.html favicon.svg ./public/
 COPY js/   ./public/js/
 COPY css/  ./public/css/

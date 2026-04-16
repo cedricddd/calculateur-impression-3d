@@ -39,6 +39,9 @@ app.get('/callback', (req, res) => {
   res.redirect('/');
 });
 
+// ── Guide d'utilisation (public) ─────────────────────────────────────────────
+app.get('/guide.html', (req, res) => res.sendFile(path.join(__dirname, 'guide.html')));
+
 // ── Toutes les routes ci-dessous nécessitent un token valide ─────────────────
 app.use(authMiddleware);
 
