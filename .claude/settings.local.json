@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(python -m http.server:*)",
+      "Bash(timeout:*)",
+      "Bash(dir \"C:\\\\Users\\\\ced-gamer\\\\Downloads\" /b /s)",
+      "Bash(powershell -Command:*)"
+    ]
+  }
+}

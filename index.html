@@ -2582,6 +2582,28 @@
                                     </label>
                                     <input type="number" id="laborCost" value="50" step="1" min="0" class="w-full px-4 py-2 border border-gray-300 rounded-lg transition">
                                 </div>
+
+                                <!-- Frais divers -->
+                                <div class="col-span-2 mt-2 rounded-lg p-3" style="background: rgba(236, 72, 153, 0.08); border: 1px solid rgba(236, 72, 153, 0.3);">
+                                    <div class="text-xs font-semibold mb-2 flex items-center gap-1" style="color: #ec4899;">
+                                        <i class="fas fa-receipt"></i>
+                                        <span data-i18n="res.extraCost">Frais divers</span>
+                                        <span class="tooltip ml-1">
+                                            <i class="fas fa-info-circle text-gray-400 text-xs"></i>
+                                            <span class="tooltiptext">Coûts ponctuels hors impression : accessoire, logiciel, matériel spécifique…</span>
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="block text-xs mb-1" style="color: var(--text-secondary);" data-i18n="lbl.extraCostLabel">Libellé</label>
+                                            <input type="text" id="extraCostLabel" placeholder="ex: Logiciel de découpe, Buse 0.2…" class="w-full px-3 py-2 border border-gray-300 rounded-lg transition text-sm" style="background: var(--bg-card); color: var(--text-primary);">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs mb-1" style="color: var(--text-secondary);" data-i18n="lbl.extraCostAmount">Montant (€)</label>
+                                            <input type="number" id="extraCostAmount" value="0" step="0.01" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg transition text-sm">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2744,6 +2766,15 @@
                                     <span class="font-semibold" id="laborCostDisplay" style="color: var(--text-primary);">0.00 €</span>
                                 </div>
                                 <div class="cost-bar-container"><div class="cost-bar labor" id="laborBar" style="width: 0%;"></div></div>
+                            </div>
+
+                            <!-- Frais divers (masqué si = 0) -->
+                            <div class="cost-item hidden" id="extraCostRow">
+                                <div class="flex justify-between items-center text-sm">
+                                    <span style="color: var(--text-secondary);"><i class="fas fa-receipt mr-2" style="color: #ec4899;"></i><span data-i18n="res.extraCost">Frais divers</span></span>
+                                    <span class="font-semibold" id="extraCostDisplay" style="color: var(--text-primary);">0.00 €</span>
+                                </div>
+                                <div class="cost-bar-container"><div class="cost-bar" id="extraCostBar" style="width: 0%; background: #ec4899;"></div></div>
                             </div>
 
                             <!-- Coûts heures/minutes/poids cachés pour compatibilité -->

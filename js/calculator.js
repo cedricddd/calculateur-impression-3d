@@ -119,6 +119,8 @@ const TRANSLATIONS = {
         'lbl.maintenance':'Maintenance (€/heure)','lbl.failureRate':"Taux d'échec (%)",
         'lbl.profitMargin':'Marge bénéficiaire (%)','lbl.laborHours':"Durée main-d'œuvre (heures)",
         'lbl.laborCost':"Taux horaire main-d'œuvre (€/h)",
+        'lbl.extraCostLabel':'Libellé des frais divers','lbl.extraCostAmount':'Montant des frais divers (€)',
+        'res.extraCost':'Frais divers',
         'btn.loadPreset':'Charger les paramètres Bambu Lab A1','btn.save':'Sauvegarder',
         'btn.load':'Charger','btn.reset':'Réinitialiser','btn.pdf':'PDF',
         'btn.calculate':'Calculer le coût','btn.addMaterial':'Ajouter un matériau','btn.browse':'Parcourir les fichiers',
@@ -158,6 +160,8 @@ const TRANSLATIONS = {
         'lbl.maintenance':'Maintenance (€/hour)','lbl.failureRate':'Failure rate (%)',
         'lbl.profitMargin':'Profit margin (%)','lbl.laborHours':'Labor hours',
         'lbl.laborCost':'Labor rate (€/h)',
+        'lbl.extraCostLabel':'Misc. cost description','lbl.extraCostAmount':'Misc. costs (€)',
+        'res.extraCost':'Misc. costs',
         'btn.loadPreset':'Load Bambu Lab A1 presets','btn.save':'Save',
         'btn.load':'Load','btn.reset':'Reset','btn.pdf':'PDF',
         'btn.calculate':'Calculate cost','btn.addMaterial':'Add material','btn.browse':'Browse files',
@@ -453,7 +457,9 @@ document.addEventListener('DOMContentLoaded', function() {
             failureRate: document.getElementById('failureRate').value,
             profitMargin: document.getElementById('profitMargin').value,
             laborHours: document.getElementById('laborHours').value,
-            laborCost: document.getElementById('laborCost').value
+            laborCost: document.getElementById('laborCost').value,
+            extraCostLabel: document.getElementById('extraCostLabel')?.value || '',
+            extraCostAmount: document.getElementById('extraCostAmount')?.value || '0'
         };
         localStorage.setItem('3dprintCalculatorConfig', JSON.stringify(config));
     });
@@ -483,6 +489,7 @@ function calculateCost() {
     const profitMargin = parseFloat(document.getElementById('profitMargin').value) || 0;
     const laborHours = parseFloat(document.getElementById('laborHours').value) || 0;
     const laborRate = parseFloat(document.getElementById('laborCost').value) || 0;
+    const extraCost = parseFloat(document.getElementById('extraCostAmount').value) || 0;
 
     // Calculs détaillés
     
@@ -508,9 +515,9 @@ function calculateCost() {
     // 6. Coût des échecs
     const failureCostTotal = baseCost * (failureRate / 100);
     
-    // Coût total
-    const totalCost = baseCost + failureCostTotal;
-    
+    // Coût total (les frais divers s'ajoutent après le calcul des échecs)
+    const totalCost = baseCost + failureCostTotal + extraCost;
+
     // Prix de vente suggéré (avec marge)
     const sellingPrice = totalCost * (1 + profitMargin / 100);
 
@@ -528,6 +535,7 @@ function calculateCost() {
         maintenanceCost: maintenanceCostTotal,
         laborCost: laborCostTotal,
         failureCost: failureCostTotal,
+        extraCost: extraCost,
         sellingPrice: sellingPrice,
         volume: volume,
         costPerGram: costPerGram,
@@ -541,7 +549,8 @@ function calculateCost() {
         depreciation: depreciationCostTotal,
         maintenance: maintenanceCostTotal,
         labor: laborCostTotal,
-        failure: failureCostTotal
+        failure: failureCostTotal,
+        extra: extraCost
     });
 }
 
@@ -556,6 +565,19 @@ function updateDisplay(costs) {
     document.getElementById('laborCostDisplay').textContent = formatCurrency(costs.laborCost);
     document.getElementById('failureCost').textContent = formatCurrency(costs.failureCost);
     document.getElementById('sellingPrice').textContent = formatCurrency(costs.sellingPrice);
+
+    // Frais divers
+    const extraRow = document.getElementById('extraCostRow');
+    if (extraRow) {
+        if (costs.extraCost > 0) {
+            const label = document.getElementById('extraCostLabel')?.value?.trim() || '';
+            const displayLabel = label ? `${formatCurrency(costs.extraCost)} (${label})` : formatCurrency(costs.extraCost);
+            document.getElementById('extraCostDisplay').textContent = displayLabel;
+            extraRow.classList.remove('hidden');
+        } else {
+            extraRow.classList.add('hidden');
+        }
+    }
     
     // Statistiques
     document.getElementById('costPerGram').textContent = formatCurrency(costs.costPerGram);
@@ -652,9 +674,11 @@ function saveConfig() {
         failureRate: document.getElementById('failureRate').value,
         profitMargin: document.getElementById('profitMargin').value,
         laborHours: document.getElementById('laborHours').value,
-        laborCost: document.getElementById('laborCost').value
+        laborCost: document.getElementById('laborCost').value,
+        extraCostLabel: document.getElementById('extraCostLabel')?.value || '',
+        extraCostAmount: document.getElementById('extraCostAmount')?.value || '0'
     };
-    
+
     localStorage.setItem('3dprintCalculatorConfig', JSON.stringify(config));
     showNotification('Configuration sauvegardée avec succès!', 'success');
 }
@@ -706,7 +730,9 @@ function resetToDefaults() {
     document.getElementById('profitMargin').value = '30';
     document.getElementById('laborHours').value = '0.5';
     document.getElementById('laborCost').value = '50';
-    
+    if (document.getElementById('extraCostLabel')) document.getElementById('extraCostLabel').value = '';
+    if (document.getElementById('extraCostAmount')) document.getElementById('extraCostAmount').value = '0';
+
     calculateCost();
     showNotification('Réinitialisé aux valeurs par défaut', 'info');
 }
@@ -733,16 +759,17 @@ function initChart() {
     costChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Filament', 'Électricité', 'Amortissement', 'Maintenance', 'Main-d\'œuvre', 'Échecs'],
+            labels: ['Filament', 'Électricité', 'Amortissement', 'Maintenance', 'Main-d\'œuvre', 'Échecs', 'Frais divers'],
             datasets: [{
-                data: [0, 0, 0, 0, 0, 0],
+                data: [0, 0, 0, 0, 0, 0, 0],
                 backgroundColor: [
                     '#8b5cf6', // purple
                     '#fbbf24', // yellow
                     '#3b82f6', // blue
                     '#f97316', // orange
                     '#10b981', // green
-                    '#ef4444'  // red
+                    '#ef4444', // red
+                    '#ec4899'  // pink
                 ],
                 borderWidth: 2,
                 borderColor: '#fff'
@@ -785,7 +812,8 @@ function updateChart(costs) {
         costs.depreciation,
         costs.maintenance,
         costs.labor,
-        costs.failure
+        costs.failure,
+        costs.extra || 0
     ];
     costChart.update();
 }
@@ -1236,6 +1264,36 @@ async function exportPDF() {
         doc.text(noteLines, margin + 5, y + 8);
 
         y += noteBoxH + 4;
+
+        // Frais divers (si renseignés)
+        const extraCostVal = parseFloat(document.getElementById('extraCostAmount')?.value) || 0;
+        const extraCostLabelVal = document.getElementById('extraCostLabel')?.value?.trim() || '';
+        if (extraCostVal > 0) {
+            const boxH = extraCostLabelVal ? 17 : 11;
+            doc.setFillColor(255, 243, 252);
+            doc.setDrawColor(236, 72, 153);
+            doc.setLineWidth(0.4);
+            doc.roundedRect(margin, y - 3, pageWidth - (margin * 2), boxH, 2, 2, 'FD');
+
+            doc.setFontSize(7.5);
+            doc.setTextColor(180, 30, 100);
+            doc.setFont('helvetica', 'bolditalic');
+            doc.text('COUT EXCEPTIONNEL', margin + 7, y + 2);
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(100, 10, 60);
+            doc.text(formatCurrency(extraCostVal), pageWidth - margin - 5, y + 2, { align: 'right' });
+
+            if (extraCostLabelVal) {
+                doc.setFontSize(8.5);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(120, 40, 80);
+                doc.text(extraCostLabelVal, margin + 7, y + 9);
+            }
+
+            y += boxH + 4;
+        }
 
         // ==========================================
         // APERÇU 3D DE LA PIÈCE
