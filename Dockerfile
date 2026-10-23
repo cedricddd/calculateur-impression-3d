@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 LABEL maintainer="cedric@ced-it.be"
 LABEL description="Calculateur de prix d'impression 3D - Ced-IT"
